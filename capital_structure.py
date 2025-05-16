@@ -20,9 +20,9 @@ with st.expander("ℹ️ About this tool", expanded=False):
         """
         *Visualising the classic trade-off theory.*
 
-        * **Red curve** – firm value with **tax shield only**  
-        * **Black curve** – **levered value** after distress costs  
-        * **Indigo dashed line** – unlevered value **V<sub>U</sub>**  
+        * **Red curve** – **levered value** with **tax shield only**  
+        * **Black curve** – **levered value** with **tax shield and distress costs  **
+        * **Horizontal dashed line** – unlevered value **V<sub>U</sub>**  
         """,
         unsafe_allow_html=True,
     )
