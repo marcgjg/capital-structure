@@ -91,7 +91,7 @@ fig.add_hline(
     annotation=dict(
         text="V<sub>U</sub> (un-levered)",
         showarrow=False,
-        yshift=-15,                # ← below the line
+        yshift=-20,                # ← below the line
     ),
 )
 
