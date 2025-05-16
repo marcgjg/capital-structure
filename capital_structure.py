@@ -3,31 +3,29 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-# ─────────────────────  PAGE CONFIG  ───────────────────── #
+# ─────────── PAGE CONFIG ─────────── #
 st.set_page_config(page_title="Optimal Capital Structure",
                    page_icon="📐", layout="wide")
-st.markdown(
-    '<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital Structure</h1>',
-    unsafe_allow_html=True,
-)
+st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital Structure</h1>',
+            unsafe_allow_html=True)
 
 # ℹ️  ABOUT PANEL ------------------------------------------------------ #
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
-        *Trade-off Theory visualiser*
+        Visualises the **tax-shield vs. distress-cost** trade-off.
 
         * **Red** – firm value with **tax shield only**  
         * **Black** – levered value after distress costs  
         * **Indigo dashed** – un-levered value **V<sub>U</sub>**  
         * **Grey dashed vertical** – debt ratio that maximises V<sub>L</sub>  
-        * **Dashed arrows** – PV (tax shield) & V<sub>L</sub> at that point  
+        * **Dashed arrows** – PV (tax shield) & V<sub>L</sub> at clear offsets  
         * **Grey dotted line at 100 % debt** – PV (distress costs)
         """,
         unsafe_allow_html=True,
     )
 
-# ─────────────────────  SIDEBAR INPUTS  ───────────────────── #
+# ─────────── SIDEBAR INPUTS ─────────── #
 sb = st.sidebar
 sb.header("Core inputs")
 
@@ -40,31 +38,33 @@ sb.markdown("---")
 FD_total = sb.slider("PV of distress costs at 100 % debt  (€ million)",
                      0.0, 150.0, 40.0, 1.0)
 
-# ─────────────────────  MODEL CONSTANTS  ───────────────────── #
-BETA_DECAY  = 2.0      # controls the red-curve peak
-FD_EXPONENT = 2.0      # convexity of distress costs
+# ─────────── MODEL CONSTANTS ─────────── #
+BETA_DECAY  = 2.0      # red-curve decay
+FD_EXPONENT = 2.0      # distress-cost convexity
+OFFSET      = 7        # spacing (ppt) between verticals
 
-# ─────────────────────  CALCULATIONS  ───────────────────── #
-d_pct  = np.arange(0, 101)            # 0 … 100 %
+# ─────────── CALCULATIONS ─────────── #
+d_pct  = np.arange(0, 101)
 d_frac = d_pct / 100
 
-pv_tax = (T_c / 100) * V_U * d_frac * np.exp(-BETA_DECAY * d_frac)
-V_tax  = V_U + pv_tax                 # red curve
+pv_tax = (T_c/100) * V_U * d_frac * np.exp(-BETA_DECAY * d_frac)
+V_tax  = V_U + pv_tax
 
-pv_fd  = FD_total * d_frac ** FD_EXPONENT
-V_L    = V_tax - pv_fd                # black curve
+pv_fd  = FD_total * d_frac**FD_EXPONENT
+V_L    = V_tax - pv_fd
 
-opt_idx   = int(np.argmax(V_L))
-opt_d_pct = int(d_pct[opt_idx])       # integer for clean placement
-opt_val   = V_L[opt_idx]
-Vtax_opt  = V_tax[opt_idx]
+opt_idx   = np.argmax(V_L)
+opt_d_pct = int(d_pct[opt_idx])        # integer -- easier offsets
 
-# shift helper ±3 ppt but keep inside [0,100]
-offset = 3
-x_left  = max(0,  opt_d_pct - offset)        # PV (tax shield) arrow
-x_right = min(100, opt_d_pct + offset)       # V_L arrow
+# x-positions for the two arrows
+x_left  = max(0,  opt_d_pct - OFFSET)   # PV (tax shield)
+x_right = min(100, opt_d_pct + OFFSET)  # V_L arrow
 
-# ─────────────────────  PLOT  ───────────────────── #
+# y-coordinates where the arrows should stop (at their curves)
+PVTS_top = V_tax[x_left]
+VL_top   = V_L[x_right]
+
+# ─────────── PLOT ─────────── #
 INDIGO = "#6366F1"
 fig = go.Figure()
 
@@ -88,39 +88,39 @@ fig.add_hline(
                     font=dict(size=12, color=INDIGO)),
 )
 
-# grey optimum guide
+# grey optimal guide
 fig.add_vline(
     x=opt_d_pct,
     line=dict(color="grey", dash="dash"),
-    annotation=dict(text=f"Optimal&nbsp;{opt_d_pct}% debt",
+    annotation=dict(text=f"Optimal {opt_d_pct}% debt",
                     textangle=-90, showarrow=False, yshift=10),
 )
 
-# dashed arrow → PV (tax shield) – left of the guide
+# dashed arrow → PV (tax shield)
 fig.add_shape(type="line",
     x0=x_left, x1=x_left,
-    y0=V_U, y1=Vtax_opt,
+    y0=V_U, y1=PVTS_top,
     line=dict(color="#d62728", dash="dot"))
 fig.add_annotation(
-    x=x_left - 1.5, y=(V_U + Vtax_opt) / 2,
+    x=x_left - 1.5, y=(V_U + PVTS_top)/2,
     text="PV (tax shield)",
     showarrow=False, font=dict(size=12, color="#d62728"),
     align="right",
 )
 
-# dashed arrow → V_L – right of the guide
+# dashed arrow → Value of levered firm
 fig.add_shape(type="line",
     x0=x_right, x1=x_right,
-    y0=V_U, y1=opt_val,
+    y0=V_U, y1=VL_top,
     line=dict(color="black", dash="dot"))
 fig.add_annotation(
-    x=x_right + 1.5, y=(V_U + opt_val) / 2,
+    x=x_right + 1.5, y=(V_U + VL_top)/2,
     text="Value of levered firm",
     showarrow=False, font=dict(size=12, color="black"),
     align="left",
 )
 
-# grey dotted line at 100 % debt = PV(distress costs)
+# grey dotted line at 100 % debt (PV distress)
 fig.add_shape(type="line",
     x0=100, x1=100,
     y0=V_L[-1], y1=V_tax[-1],
@@ -139,18 +139,18 @@ fig.update_layout(
     font=dict(size=16),
     height=620,
     legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
-    margin=dict(l=80, r=80, t=30, b=40),    # auto y-axis scaling
+    margin=dict(l=80, r=80, t=30, b=40),   # auto-scaled y-axis
 )
 
 st.plotly_chart(fig, use_container_width=True)
 
-# ─────────────────────  SUMMARY  ───────────────────── #
+# ─────────── SUMMARY ─────────── #
 st.markdown(
     f"**Optimal capital structure:** **{opt_d_pct}% debt**, "
-    f"levered firm value **€{opt_val:,.1f} million**"
+    f"levered firm value **€{VL_top:,.1f} million**"
 )
 
-# ─────────────────────  DATA TABLE  ───────────────────── #
+# ─────────── DATA TABLE ─────────── #
 with st.expander("Data table"):
     df = pd.DataFrame({
         "Debt %": d_pct,
@@ -162,7 +162,7 @@ with st.expander("Data table"):
     st.dataframe(df.style.format("{:.2f}"),
                  use_container_width=True, height=280)
 
-# ─────────────────────  FOOTER  ───────────────────── #
+# ─────────── FOOTER ─────────── #
 st.markdown(
     '<div style="text-align:center; padding-top:1rem; color:#6B7280;">'
     'Optimal Capital Structure Visualiser&nbsp;|&nbsp;Developed by Prof.&nbsp;Marc&nbsp;Goergen&nbsp;with the help of&nbsp;ChatGPT'
