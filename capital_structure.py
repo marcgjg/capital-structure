@@ -37,7 +37,7 @@ FD_total = sb.slider("PV of distress costs at 100 % debt  (€ m)",
 
 # ───────── FIXED CONSTANTS ───────── #
 V_U          = 100.0   # € m  (fixed)
-BETA_DECAY   = 3.0     # exponential decay of tax shield
+BETA_DECAY   = 5.0     # exponential decay of tax shield
 TAX_HEIGHT   = 30.0     # height scaler  ↑ makes curve peak higher
 FD_EXPONENT  = 2.0     # distress-cost convexity
 
