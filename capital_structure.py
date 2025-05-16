@@ -22,7 +22,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
 
         * **Red curve** – **levered value** with **tax shield only**  
         * **Black curve** – **levered value** with **tax shield and distress costs  **
-        * **Horizontal dashed line** – unlevered value **V<sub>U</sub>**  
+        * **Horizontal dashed line** – **unlevered value** 
         """,
         unsafe_allow_html=True,
     )
