@@ -20,8 +20,6 @@ with st.expander("ℹ️ About this tool", expanded=False):
         * **Red curve** – firm value with **tax shield only**  
         * **Black curve** – **levered firm value** after subtracting distress costs  
         * **Indigo dashed line** – un-levered value **V<sub>U</sub>**  
-        * **Grey dashed vertical** – debt ratio that maximises **V<sub>L</sub>**  
-        * **Grey dash at 100 % debt** – PV of the distress costs you entered
         """,
         unsafe_allow_html=True,
     )
