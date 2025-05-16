@@ -6,36 +6,49 @@ import plotly.graph_objects as go
 # ─────────────────────────── CONFIG ──────────────────────────── #
 
 st.set_page_config(
-    page_title="Capital-Structure Returns Curve ( piece-wise cost of debt )",
-    page_icon="🏗️",
+    page_title="Capital-Structure Returns Curve (convex cost of debt)",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.markdown(
-    '<h1 style="text-align:center; color:#0F172A;">🏗️ Capital-Structure Returns Curve</h1>',
+    '<h1 style="text-align:center; color:#0F172A;">📈 Capital-Structure Returns Curve</h1>',
     unsafe_allow_html=True,
 )
 
-with st.expander("ℹ️ What the model does", expanded=False):
+with st.expander("ℹ️ Model logic", expanded=False):
     st.markdown(
         """
         *Fix the operating assumptions on the left.*  
-        The chart then shows **ROA, ROE and after-tax ROD for every leverage level
-        from 0 % debt to 100 % debt**.  
-        <br>
+        The right-hand plot shows **ROA, ROE and after-tax ROD** for every
+        leverage level from 0 % debt to 100 % debt.
 
-        ### Cost-of-debt behaviour  
-        | Region | Debt % range | Interest-rate | Slope |
-        |--------|--------------|---------------|-------|
-        | **Risk-free** | 0 % → `cut-off 1` | = **Base rate** | 0 |
-        | **Moderate**  | `cut-off 1` → `cut-off 2` | linearly ↑ from Base → **Mid rate** | gentle |
-        | **High-risk** | `cut-off 2` → 100 % | linearly ↑ from Mid → **Max rate** | steeper |
+        ### Pre-tax cost of debt  
 
-        Returns are computed *after tax* using  
-        &nbsp;&nbsp;• **EBIT** = _EBIT-margin_ × Assets  
-        &nbsp;&nbsp;• **Net Income** = (EBIT − Interest) × (1 − Tax)  
-        &nbsp;&nbsp;• **ROA** = NI ÷ Assets  • **ROE** = NI ÷ Equity  • **ROD** = Interest × (1 − Tax) ÷ Debt
+        | Region | Debt % range | Interest-rate |
+        |--------|--------------|---------------|
+        | **Risk-free plateau** | 0 % → *cut-off* | = **Base rate** |
+        | **Risky debt** | above *cut-off* | rises convexly towards **Max rate** |
+
+        The risky-debt portion is computed with
+
+        \\[
+        r_D(D) \;=\; r_0 \;+\;
+        \\bigl( r_{\\text{max}} - r_0 \\bigr)\;
+        \\Bigl(\\tfrac{D - D_{\\text{cut}}}{100 - D_{\\text{cut}}}\\Bigr)^{\\,p}
+        \\]
+
+        where **p = Convexity** (> 1).  
+        Each value is finally *rounded to the nearest 0.05 %* (5 bp).
+
+        Returns are after-tax:
+
+        * **EBIT** = _EBIT-margin_ × Assets  
+        * **Net Income** = (EBIT − Interest) × (1 − Tax)  
+        * **ROA** = NI ÷ Assets  
+        * **ROE** = NI ÷ Equity  
+        * **ROD** = Interest × (1 − Tax) ÷ Debt
         """,
         unsafe_allow_html=True,
     )
@@ -52,62 +65,52 @@ with col_left:
     tax_rate     = st.slider("Corporate tax rate (%)", 0.0, 50.0, 25.0, 0.5)
 
     st.markdown("---")
-    st.subheader("Cost-of-debt shape")
+    st.subheader("Cost-of-debt parameters")
 
-    base_rate    = st.slider("Base (risk-free) rate %", 0.0, 10.0, 4.0, 0.25)
+    base_rate = st.slider("Base (risk-free) rate %", 0.0, 10.0, 4.0, 0.25)
 
-    cut1 = st.slider("Debt % where rate starts to rise", 0, 60, 30, 1)
-    cut2 = st.slider("Debt % where slope steepens", cut1 + 1, 95, 70, 1)
+    cut_off = st.slider("Debt % where debt becomes risky", 0, 80, 30, 1)
 
-    mid_rate = st.slider(
-        f"Interest-rate at {cut2} % debt %",
-        min_value=base_rate,
-        max_value=20.0,
-        value=6.0,
-        step=0.25,
-    )
     max_rate = st.slider(
         "Interest-rate at 100 % debt %",
-        min_value=mid_rate,
+        min_value=base_rate + 0.25,
         max_value=30.0,
-        value=15.0,
+        value=12.0,
         step=0.25,
     )
 
-# ────────────── BUILD piece-wise COST-OF-DEBT CURVE ────────────── #
+    convexity = st.slider(
+        "Convexity (> 1 → steeper rise)", 1.0, 5.0, 2.0, 0.1
+    )
+
+# ──────── BUILD CONVEX COST-OF-DEBT CURVE (rounded to 5 bp) ───────── #
 
 debt_pcts = np.arange(0, 101, 1)                    # 0,1,2,…,100 %
 interest_rates = np.empty_like(debt_pcts, dtype=float)
 
 # 1) Risk-free plateau
-interest_rates[: cut1 + 1] = base_rate
+interest_rates[: cut_off + 1] = base_rate
 
-# 2) Gentle slope region
-if cut2 > cut1:
-    slope1 = (mid_rate - base_rate) / (cut2 - cut1)
-    interest_rates[cut1 + 1 : cut2 + 1] = base_rate + slope1 * (
-        debt_pcts[cut1 + 1 : cut2 + 1] - cut1
-    )
-else:  # cut-offs coincide – keep flat until cut2
-    interest_rates[cut1 + 1 : cut2 + 1] = mid_rate
+# 2) Convex risky-debt section
+if cut_off < 100:
+    frac = (debt_pcts[cut_off + 1 :] - cut_off) / (100 - cut_off)   # 0 → 1
+    interest_rates[cut_off + 1 :] = base_rate + (
+        max_rate - base_rate
+    ) * frac ** convexity
+else:  # cut-off at 100 % ⇒ remain flat
+    interest_rates[cut_off + 1 :] = base_rate
 
-# 3) Steeper slope region
-if cut2 < 100:
-    slope2 = (max_rate - mid_rate) / (100 - cut2)
-    interest_rates[cut2 + 1 :] = mid_rate + slope2 * (
-        debt_pcts[cut2 + 1 :] - cut2
-    )
-else:  # cut2 = 100 % ⇒ no steeper region
-    interest_rates[cut2 + 1 :] = max_rate
+# Round every point to the nearest 0.05 %  (= 5 bp)
+interest_rates = np.round(interest_rates / 0.05) * 0.05
 
 # ─────────────── DERIVE RETURNS FOR EVERY LEVERAGE ─────────────── #
 
 debt_vals   = total_assets * debt_pcts / 100
 equity_vals = total_assets - debt_vals
 
-ebit           = total_assets * (ebit_margin / 100)
-interest_exp   = debt_vals * interest_rates / 100
-net_income     = (ebit - interest_exp) * (1 - tax_rate / 100)
+ebit         = total_assets * (ebit_margin / 100)
+interest_exp = debt_vals * interest_rates / 100
+net_income   = (ebit - interest_exp) * (1 - tax_rate / 100)
 
 roa = net_income / total_assets * 100
 roe = np.where(equity_vals == 0, np.nan, net_income / equity_vals * 100)
@@ -119,14 +122,14 @@ df = pd.DataFrame(
         "ROA %":  roa,
         "ROE %":  roe,
         "ROD %":  rod,
-        "Cost-of-Debt %": interest_rates,          # helpful for hover-tooltips
+        "Cost-of-Debt %": interest_rates,
     }
 )
 
 # ──────────────────────────── PLOT ──────────────────────────── #
 
 with col_right:
-    st.subheader("Returns as Debt % changes")
+    st.subheader("Expected returns vs. leverage")
 
     fig = go.Figure()
 
@@ -161,7 +164,7 @@ with col_right:
         )
     )
 
-    # optional: show cost-of-debt curve on secondary y-axis for context
+    # optional: show the (pre-tax) cost-of-debt curve on a secondary y-axis
     fig.add_trace(
         go.Scatter(
             x=df["Debt %"],
@@ -193,7 +196,7 @@ with col_right:
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("#### Data")
+    st.markdown("#### Data (rounded to 5 bp)")
     st.dataframe(
         df[["Debt %", "ROA %", "ROE %", "ROD %", "Cost-of-Debt %"]]
         .style.format("{:.2f}"),
@@ -204,7 +207,7 @@ with col_right:
 
 st.markdown(
     '<div style="text-align:center; padding-top:1rem;">'
-    'Capital-Structure Returns Curve | piece-wise cost of debt | MBA Corporate-Finance Lab'
+    'Capital-Structure Returns Curve | convex cost of debt | MBA Corporate-Finance Lab'
     "</div>",
     unsafe_allow_html=True,
 )
