@@ -23,8 +23,6 @@ with st.expander("ℹ️ About this tool", expanded=False):
         * **Red curve** – firm value with **tax shield only**  
         * **Black curve** – **levered value** after distress costs  
         * **Indigo dashed line** – un-levered value **V<sub>U</sub>**  
-        * **Grey dashed vertical** – value-maximising debt ratio  
-        * **Grey dash at 100 % debt** – PV of the distress costs you enter
         """,
         unsafe_allow_html=True,
     )
@@ -92,7 +90,7 @@ fig.add_hline(
     annotation=dict(
         text="V<sub>U</sub> (un-levered)",
         showarrow=False,
-        yshift=-18,           # pixel shift ↓
+        yshift=-20,           # pixel shift ↓
         font=dict(size=12, color=INDIGO),
     ),
 )
