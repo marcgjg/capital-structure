@@ -20,7 +20,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
 
         * **Red curve** – levered value with **tax shield only**  
         * **Black curve** – levered value with **tax shield and distress costs**  
-        * **Horizontal dashed** – unlevered value  
+        * **Horizontal dashed** – un-levered value  
         """,
         unsafe_allow_html=True,
     )
@@ -39,26 +39,22 @@ FD_total = sb.slider("PV of distress costs at 100 % debt  (€ million)",
                      0.0, 150.0, 40.0, 1.0)
 
 # MODEL CONSTANTS ----------------------------------------------------- #
-BETA_DECAY  = 2.0   # ↓ slower decay ⇒ red curve peaks at 1/BETA_DECAY ≈ 50 %
-FD_EXPONENT = 2.0   # convexity of distress costs
+BETA_DECAY  = 2.0
+FD_EXPONENT = 2.0
 
 # CALCULATE CURVES ---------------------------------------------------- #
 d_pct  = np.arange(0, 101)
 d_frac = d_pct / 100
 
-pv_tax = (T_c/100) * V_U * d_frac * np.exp(-BETA_DECAY * d_frac)
+pv_tax = (T_c / 100) * V_U * d_frac * np.exp(-BETA_DECAY * d_frac)
 V_tax  = V_U + pv_tax
 
-pv_fd  = FD_total * d_frac**FD_EXPONENT
+pv_fd  = FD_total * d_frac ** FD_EXPONENT
 V_L    = V_tax - pv_fd
 
 opt_idx   = int(np.argmax(V_L))
 opt_d_pct = d_pct[opt_idx]
 opt_val   = V_L[opt_idx]
-
-# Marker for PV-distress gap at 100 % debt
-arrow_x, y_black, y_red = 100, V_L[-1], V_tax[-1]
-y_mid = (y_black + y_red) / 2
 
 # ----------------------------- PLOT ---------------------------------- #
 INDIGO = "#6366F1"
@@ -75,6 +71,7 @@ fig.add_trace(go.Scatter(
     line=dict(color="#d62728", width=2),
 ))
 
+# Un-levered baseline
 fig.add_hline(
     y=V_U, line=dict(color=INDIGO, dash="dash"),
     annotation=dict(text="V<sub>U</sub> (unlevered)",
@@ -82,17 +79,36 @@ fig.add_hline(
                     font=dict(size=12, color=INDIGO)),
 )
 
+# Optimal-ratio guide
 fig.add_vline(
     x=opt_d_pct, line=dict(color="grey", dash="dash"),
     annotation=dict(text=f"Optimal {opt_d_pct:.0f}% debt",
                     textangle=-90, showarrow=False, yshift=10),
 )
 
+# NEW — vertical dashed line up to black curve
+fig.add_shape(
+    type="line",
+    x0=opt_d_pct, x1=opt_d_pct,
+    y0=0, y1=opt_val,
+    line=dict(color="black", dash="dot"),
+)
+fig.add_annotation(
+    x=opt_d_pct + 2,
+    y=opt_val / 2,
+    text="Value of levered firm",
+    showarrow=False,
+    font=dict(size=12, color="black"),
+    align="left",
+)
+
+# Existing PV-distress arrow at 100 % debt
+arrow_x, y_black, y_red = 100, V_L[-1], V_tax[-1]
 fig.add_shape(type="line",
     x0=arrow_x, x1=arrow_x, y0=y_black, y1=y_red,
     line=dict(color="grey", dash="dot"))
 fig.add_annotation(
-    x=arrow_x + 2, y=y_mid,
+    x=arrow_x + 2, y=(y_black + y_red) / 2,
     text="PV of financial-distress costs",
     showarrow=False, font=dict(size=12, color="grey"), align="left",
 )
