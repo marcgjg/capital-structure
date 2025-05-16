@@ -20,7 +20,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
 
         * **Red curve** – levered value with **tax shield only**  
         * **Black curve** – levered value with **tax shield and distress costs**  
-        * **Horizontal dashed** – un-levered value  
+        * **Horizontal dashed** – unlevered value  
         * **Grey dashed vertical** – optimal capital structure
         """,
         unsafe_allow_html=True,
@@ -30,7 +30,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
 sb = st.sidebar
 sb.header("Core inputs")
 
-V_U = sb.slider("Un-levered firm value  Vᵤ  (€ million)",
+V_U = sb.slider("Unlevered firm value  Vᵤ  (€ million)",
                 50.0, 500.0, 200.0, 10.0)
 T_c = sb.slider("Corporate tax rate  T꜀  (%)",
                 0.0, 50.0, 25.0, 0.5)
@@ -78,7 +78,7 @@ fig.add_trace(go.Scatter(
 
 fig.add_hline(
     y=V_U, line=dict(color=INDIGO, dash="dash"),
-    annotation=dict(text="V<sub>U</sub> (un-levered)",
+    annotation=dict(text="V<sub>U</sub> (unlevered)",
                     showarrow=False, yshift=-20,
                     font=dict(size=12, color=INDIGO)),
 )
