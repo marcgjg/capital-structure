@@ -65,7 +65,6 @@ arrow_x, y_black, y_red = 100, V_L[-1], V_tax[-1]
 y_mid = (y_black + y_red) / 2
 
 # ─────────────────────── PLOT ─────────────────────── #
-st.subheader("Value components vs. leverage")
 
 INDIGO = "#6366F1"
 fig = go.Figure()
