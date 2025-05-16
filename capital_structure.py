@@ -120,7 +120,7 @@ fig.add_annotation(
 
 fig.update_layout(
     xaxis_title="Debt as % of Assets",
-    yaxis_title="Firm value (€/ million)",
+    yaxis_title="Firm value (€ million)",
     hovermode="x unified",
     font=dict(size=16),
     height=620,
