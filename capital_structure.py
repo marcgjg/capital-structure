@@ -14,17 +14,17 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ───────────── ℹ️ ABOUT THIS TOOL (EXPANDER) ───────────── #
+# ───────────── ℹ️ ABOUT THIS TOOL ───────────── #
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
         *Visualising the classic trade-off theory.*
 
         * **Red curve** – firm value with **tax shield only**  
-        * **Black curve** – **levered firm value** after subtracting distress costs  
+        * **Black curve** – **levered value** after distress costs  
         * **Indigo dashed line** – un-levered value **V<sub>U</sub>**  
-        * **Grey dashed vertical** – debt ratio that maximises **V<sub>L</sub>**  
-        * **Grey dash at 100 % debt** – PV of the distress costs you entered
+        * **Grey dashed vertical** – value-maximising debt ratio  
+        * **Grey dash at 100 % debt** – PV of the distress costs you enter
         """,
         unsafe_allow_html=True,
     )
@@ -33,30 +33,24 @@ with st.expander("ℹ️ About this tool", expanded=False):
 sb = st.sidebar
 sb.header("Core inputs")
 
-V_U = sb.slider(
-    "Un-levered firm value  Vᵤ  (€ million)",
-    50.0, 500.0, 200.0, 10.0
-)
-T_c = sb.slider(
-    "Corporate tax rate  T꜀  (%)",
-    0.0, 50.0, 25.0, 0.5
-)
+V_U = sb.slider("Un-levered firm value  Vᵤ  (€ million)",
+                50.0, 500.0, 200.0, 10.0)
+T_c = sb.slider("Corporate tax rate  T꜀  (%)",
+                0.0, 50.0, 25.0, 0.5)
 
 sb.markdown("---")
 sb.subheader("Financial-distress costs")
 
-FD_total = sb.slider(
-    "PV of distress costs at 100 % debt  (€ million)",
-    0.0, 150.0, 40.0, 1.0
-)
+FD_total = sb.slider("PV of distress costs at 100 % debt  (€ million)",
+                     0.0, 150.0, 40.0, 1.0)
 
-# ───────────── FIXED SHAPE CONSTANTS ───────────── #
-BETA_DECAY  = 3.0      # tax-benefit decay speed
-FD_EXPONENT = 2.0      # distress-cost convexity
+# ───────────── MODEL CONSTANTS ───────────── #
+BETA_DECAY  = 3.0   # tax-benefit decay speed
+FD_EXPONENT = 2.0   # distress-cost convexity
 
 # ───────────── CALCULATE CURVES ───────────── #
-d_pct  = np.arange(0, 101)          # 0 … 100 %
-d_frac = d_pct / 100                # 0 … 1
+d_pct  = np.arange(0, 101)
+d_frac = d_pct / 100
 
 pv_tax = (T_c / 100) * V_U * d_frac * np.exp(-BETA_DECAY * d_frac)
 V_tax  = V_U + pv_tax
@@ -68,15 +62,14 @@ opt_idx   = int(np.argmax(V_L))
 opt_d_pct = d_pct[opt_idx]
 opt_val   = V_L[opt_idx]
 
-# Coordinates for PV-distress marker at 100 % debt
-arrow_x  = 100
-y_black  = V_L[-1]
-y_red    = V_tax[-1]
-y_mid    = (y_black + y_red) / 2
+# Marker for PV-distress gap at 100 % debt
+arrow_x, y_black, y_red = 100, V_L[-1], V_tax[-1]
+y_mid = (y_black + y_red) / 2
 
 # ─────────────────────── PLOT ─────────────────────── #
 st.subheader("Value components vs. leverage")
 
+INDIGO = "#6366F1"
 fig = go.Figure()
 
 fig.add_trace(go.Scatter(
@@ -92,21 +85,19 @@ fig.add_trace(go.Scatter(
     line=dict(color="#d62728", width=2),
 ))
 
-# Indigo dashed Vᵤ line + annotation further below in same colour
-INDIGO = "#6366F1"
+# Dashed indigo Vᵤ baseline with label 18 px below
 fig.add_hline(
     y=V_U,
     line=dict(color=INDIGO, dash="dash"),
-)
-fig.add_annotation(
-    x=2, y=V_U - (0.06 * V_U),          # move well below line
-    text="V<sub>U</sub> (un-levered)",
-    showarrow=False,
-    font=dict(size=12, color=INDIGO),
-    align="left",
+    annotation=dict(
+        text="V<sub>U</sub> (un-levered)",
+        showarrow=False,
+        yshift=-18,           # pixel shift ↓
+        font=dict(size=12, color=INDIGO),
+    ),
 )
 
-# Vertical dashed optimum
+# Optimal vertical
 fig.add_vline(
     x=opt_d_pct,
     line=dict(color="grey", dash="dash"),
@@ -119,15 +110,11 @@ fig.add_vline(
 )
 
 # PV-distress gap marker at 100 % debt
-fig.add_shape(
-    type="line",
-    x0=arrow_x, x1=arrow_x,
-    y0=y_black, y1=y_red,
-    line=dict(color="grey", dash="dot"),
-)
+fig.add_shape(type="line",
+    x0=arrow_x, x1=arrow_x, y0=y_black, y1=y_red,
+    line=dict(color="grey", dash="dot"))
 fig.add_annotation(
-    x=arrow_x + 2,
-    y=y_mid,
+    x=arrow_x + 2, y=y_mid,
     text="PV of financial-distress costs",
     showarrow=False,
     font=dict(size=12, color="grey"),
@@ -161,11 +148,8 @@ with st.expander("Data table"):
         "V (Tax only)": V_tax,
         "V Levered": V_L,
     })
-    st.dataframe(
-        df.style.format("{:.2f}"),
-        use_container_width=True,
-        height=280,
-    )
+    st.dataframe(df.style.format("{:.2f}"),
+                 use_container_width=True, height=280)
 
 # ───────────────────── FOOTER ───────────────────── #
 st.markdown(
