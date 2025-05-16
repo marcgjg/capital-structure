@@ -3,209 +3,160 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-# ─────────────────────────── CONFIG ──────────────────────────── #
+# ──────────────────────────── CONFIG ───────────────────────────── #
 
 st.set_page_config(
-    page_title="Capital-Structure Returns Curve (convex cost of debt)",
-    page_icon="📈",
+    page_title="Optimal Capital Structure • Tax Shield vs. Distress Costs",
+    page_icon="📐",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 st.markdown(
-    '<h1 style="text-align:center; color:#0F172A;">📈 Capital-Structure Returns Curve</h1>',
+    '<h1 style="text-align:center;">Optimal Capital Structure</h1>',
     unsafe_allow_html=True,
 )
 
-with st.expander("ℹ️ Model logic", expanded=False):
+with st.expander("Model notes"):
     st.markdown(
         """
-        *Fix the operating assumptions on the left.*  
-        The plot shows **ROA, ROE and after-tax ROD** for every leverage level
-        from 0 % to 100 % debt.  
+        *Value of levered firm*  
 
-        * A single cut-off marks the end of the **risk-free plateau**.  
-        * Beyond it, the **pre-tax cost of debt rises convexly** toward a chosen
-          maximum, *rounded to the nearest 0.05 %* (5 bp) at every step.
-        * **Equity is never allowed to fall below a minimum buffer** (default
-          0.10 % of total assets) so ROE never drops to zero or becomes “NaN”.
+        \\[
+        V_L(D) \\,=\\, V_U \\, + \\, T_c \\times D
+                   \\, - \\, k \\; \\bigl(\\tfrac{D}{A}\\bigr)^{\\gamma} \\; A
+        \\]
+
+        where  
+
+        • **D** = Debt value (we vary it from 0 → 100 % of assets)  
+        • **A** = Total assets = *V<sub>U</sub>* in this simple set-up  
+        • **T<sub>c</sub>** = corporate tax rate (slider)  
+        • **k**, **γ** = scale & convexity of financial-distress costs (sliders)
+
+        The peak of the black curve is the **optimal capital structure**.
         """,
         unsafe_allow_html=True,
     )
 
-# ────────────────────────── INPUTS ──────────────────────────── #
+# ──────────────────────────── INPUTS ───────────────────────────── #
 
-col_left, col_right = st.columns([1, 2], gap="large")
+controls, plot_col = st.columns([1, 2], gap="large")
 
-with col_left:
-    st.subheader("Operating assumptions")
+with controls:
+    st.subheader("Key assumptions")
 
-    total_assets = st.slider("Total Assets (€ millions)", 10.0, 500.0, 100.0, 10.0)
-    ebit_margin  = st.slider("EBIT margin (% of assets)", 0.0, 30.0, 10.0, 0.5)
-    tax_rate     = st.slider("Corporate tax rate (%)", 0.0, 50.0, 25.0, 0.5)
+    V_U = st.slider("Unlevered firm value  (V₍U₎) € million", 50.0, 500.0, 200.0, 10.0)
+    tax_rate = st.slider("Corporate tax rate  T_c  (%)", 0.0, 50.0, 25.0, 0.5)
 
-    st.markdown("---")
-    st.subheader("Cost-of-debt parameters")
+    st.markdown("### Financial-distress cost function")
+    k_scale = st.slider("Scale parameter  k", 0.0, 1.0, 0.15, 0.01)
+    gamma   = st.slider("Convexity  γ", 1.0, 4.0, 2.0, 0.1)
 
-    base_rate = st.slider("Base (risk-free) rate %", 0.0, 10.0, 4.0, 0.25)
+# ───────────────────── COMPUTE CURVES ACROSS DEBT RANGE ───────────── #
 
-    cut_off = st.slider("Debt % where debt becomes risky", 0, 80, 30, 1)
+debt_pct = np.arange(0, 101)                 # 0 … 100 %
+debt_val = V_U * debt_pct / 100              # € million (assets = V_U)
 
-    max_rate = st.slider(
-        "Interest-rate at 100 % debt %",
-        min_value=base_rate + 0.25,
-        max_value=30.0,
-        value=12.0,
-        step=0.25,
-    )
+pv_tax   = (tax_rate / 100) * debt_val
+pv_fd    = k_scale * (debt_val / V_U) ** gamma * V_U
+V_lever  = V_U + pv_tax - pv_fd
 
-    convexity = st.slider(
-        "Convexity (> 1 → steeper rise)", 1.0, 5.0, 2.0, 0.1
-    )
+opt_idx  = np.argmax(V_lever)                # index of max firm value
+opt_d_pct = debt_pct[opt_idx]
+opt_value = V_lever[opt_idx]
 
-    st.markdown("---")
-    st.subheader("Equity buffer")
+df = pd.DataFrame({
+    "Debt %": debt_pct,
+    "PV Tax Shield": pv_tax,
+    "PV Distress Cost": pv_fd,
+    "Levered Firm Value": V_lever,
+})
 
-    min_equity_pct = st.slider(
-        "Minimum equity as % of assets (never falls below this)",
-        0.00, 5.00, 0.10, 0.01,
-        help="Keeps ROE finite even when leverage ≈ 100 %",
-    )
+# ──────────────────────────── PLOTS ───────────────────────────── #
 
-# ──────── BUILD CONVEX COST-OF-DEBT CURVE (rounded to 5 bp) ───────── #
-
-debt_pcts = np.arange(0, 101, 1)                      # 0,1,2,…,100 %
-interest_rates = np.empty_like(debt_pcts, dtype=float)
-
-# 1) Risk-free plateau
-interest_rates[: cut_off + 1] = base_rate
-
-# 2) Convex risky-debt section
-if cut_off < 100:
-    frac = (debt_pcts[cut_off + 1:] - cut_off) / (100 - cut_off)       # 0 → 1
-    interest_rates[cut_off + 1:] = base_rate + (
-        max_rate - base_rate
-    ) * frac ** convexity
-else:  # cut-off = 100 % ⇒ flat line
-    interest_rates[cut_off + 1:] = base_rate
-
-# Round every point to the nearest 0.05 % (= 5 bp)
-interest_rates = np.round(interest_rates / 0.05) * 0.05
-
-# ─────────────── DERIVE RETURNS FOR EVERY LEVERAGE ─────────────── #
-
-# Enforce a *minimum* equity buffer (in €) at every leverage point
-min_equity_value = total_assets * min_equity_pct / 100
-
-debt_vals_raw   = total_assets * debt_pcts / 100
-equity_vals     = np.maximum(total_assets - debt_vals_raw, min_equity_value)
-debt_vals       = total_assets - equity_vals               # adjusted debt €
-
-ebit         = total_assets * (ebit_margin / 100)
-interest_exp = debt_vals * interest_rates / 100
-net_income   = (ebit - interest_exp) * (1 - tax_rate / 100)
-
-roa = net_income / total_assets * 100
-roe = net_income / equity_vals * 100                       # never div/0 now
-rod = np.where(debt_vals == 0, np.nan, interest_rates * (1 - tax_rate / 100))
-
-df = pd.DataFrame(
-    {
-        "Debt %": debt_pcts,
-        "ROA %":  roa,
-        "ROE %":  roe,
-        "ROD %":  rod,
-        "Cost-of-Debt %": interest_rates,
-        "Equity €": equity_vals,
-        "Debt €": debt_vals,
-    }
-)
-
-# ──────────────────────────── PLOT ──────────────────────────── #
-
-with col_right:
-    st.subheader("Expected returns vs. leverage")
+with plot_col:
+    st.subheader("Value components vs. leverage")
 
     fig = go.Figure()
 
+    # black: levered firm value
     fig.add_trace(
         go.Scatter(
-            x=df["Debt %"],
-            y=df["ROA %"],
+            x=debt_pct,
+            y=V_lever,
             mode="lines",
-            name="ROA",
-            line=dict(width=3),
-            hovertemplate="Debt % %{x}<br>ROA %{y:.2f} %<extra></extra>",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=df["Debt %"],
-            y=df["ROE %"],
-            mode="lines",
-            name="ROE",
-            line=dict(width=3, dash="dash"),
-            hovertemplate="Debt % %{x}<br>ROE %{y:.2f} %<extra></extra>",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=df["Debt %"],
-            y=df["ROD %"],
-            mode="lines",
-            name="ROD (after-tax)",
-            line=dict(width=3, dash="dot"),
-            hovertemplate="Debt % %{x}<br>ROD %{y:.2f} %<extra></extra>",
+            name="V (L)  – Levered value",
+            line=dict(color="black", width=3),
         )
     )
 
-    # Optional: show pre-tax cost of debt on a second axis
+    # blue: PV tax shield
     fig.add_trace(
         go.Scatter(
-            x=df["Debt %"],
-            y=df["Cost-of-Debt %"],
+            x=debt_pct,
+            y=pv_tax,
             mode="lines",
-            name="Pre-tax Cost of Debt",
-            line=dict(width=1, color="grey"),
-            yaxis="y2",
-            hovertemplate="Debt % %{x}<br>Cost of Debt %{y:.2f} %<extra></extra>",
+            name="PV (Tax shield)",
+            line=dict(color="#2563eb", width=2),
         )
+    )
+
+    # red: PV distress costs
+    fig.add_trace(
+        go.Scatter(
+            x=debt_pct,
+            y=pv_fd,
+            mode="lines",
+            name="PV (Financial-distress costs)",
+            line=dict(color="#dc2626", width=2),
+        )
+    )
+
+    # baseline V_U
+    fig.add_hline(
+        y=V_U,
+        line=dict(dash="dash", color="grey"),
+        annotation=dict(text="V (U)", showarrow=False, yshift=10),
+    )
+
+    # optimal vertical
+    fig.add_vline(
+        x=opt_d_pct,
+        line=dict(dash="dash", color="grey"),
+        annotation=dict(
+            text=f"Optimal {opt_d_pct:.0f}% debt",
+            showarrow=False,
+            xshift=0,
+            yshift=10,
+            textangle=-90,
+        ),
     )
 
     fig.update_layout(
         xaxis_title="Debt as % of Assets",
-        yaxis=dict(title="Return (%)"),
-        yaxis2=dict(
-            title="Cost-of-Debt (%)",
-            overlaying="y",
-            side="right",
-            showgrid=False,
-            zeroline=False,
-        ),
-        height=620,
-        margin=dict(l=80, r=80, t=20, b=20),
-        legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
-        font=dict(size=16),
+        yaxis_title="€ million",
         hovermode="x unified",
+        height=620,
+        legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
+        margin=dict(l=80, r=80, t=30, b=40),
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown("#### Data (rounded to 5 bp; equity never < buffer)")
-    st.dataframe(
-        df[["Debt %", "ROA %", "ROE %", "ROD %", "Cost-of-Debt %",
-            "Equity €", "Debt €"]]
-        .style.format({"ROA %": "{:.2f}", "ROE %": "{:.2f}",
-                       "ROD %": "{:.2f}", "Cost-of-Debt %": "{:.2f}",
-                       "Equity €": "{:,.2f}", "Debt €": "{:,.2f}"}),
-        use_container_width=True,
-    )
+    st.markdown(f"**Optimal debt ratio:** **{opt_d_pct:.0f} %**, giving a levered value of **€ {opt_value:,.1f} million**")
 
-# ────────────────────────── FOOTER ──────────────────────────── #
+    with st.expander("Data"):
+        st.dataframe(
+            df.style.format("{:.2f}"),
+            use_container_width=True,
+            height=300,
+        )
+
+# ──────────────────────────── FOOTER ───────────────────────────── #
 
 st.markdown(
-    '<div style="text-align:center; padding-top:1rem;">'
-    'Capital-Structure Returns Curve | convex cost of debt with equity buffer'
-    "</div>",
+    '<div style="text-align:center; padding-top:1.2rem; font-size:0.9rem;">'
+    'Prototype – tweak the functional form or parameters as you like!'
+    '</div>',
     unsafe_allow_html=True,
 )
