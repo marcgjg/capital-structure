@@ -4,14 +4,17 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # ───────────────────── PAGE CONFIG ───────────────────── #
-st.set_page_config(page_title="Optimal Capital Structure",
-                   page_icon="📐", layout="wide")
+st.set_page_config(
+    page_title="Optimal Capital Structure",
+    page_icon="📐",
+    layout="wide",
+)
 st.markdown(
     '<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital Structure</h1>',
     unsafe_allow_html=True,
 )
 
-# ───────────── ℹ️ ABOUT THIS TOOL ───────────── #
+# ───────────── ℹ️ ABOUT THIS TOOL (EXPANDER) ───────────── #
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
@@ -20,6 +23,8 @@ with st.expander("ℹ️ About this tool", expanded=False):
         * **Red curve** – firm value with **tax shield only**  
         * **Black curve** – **levered firm value** after subtracting distress costs  
         * **Indigo dashed line** – un-levered value **V<sub>U</sub>**  
+        * **Grey dashed vertical** – debt ratio that maximises **V<sub>L</sub>**  
+        * **Grey dash at 100 % debt** – PV of the distress costs you entered
         """,
         unsafe_allow_html=True,
     )
@@ -28,30 +33,36 @@ with st.expander("ℹ️ About this tool", expanded=False):
 sb = st.sidebar
 sb.header("Core inputs")
 
-V_U = sb.slider("Un-levered firm value  Vᵤ  (€ million)",
-                50.0, 500.0, 200.0, 10.0)
-T_c = sb.slider("Corporate tax rate  T꜀  (%)",
-                0.0, 50.0, 25.0, 0.5)
+V_U = sb.slider(
+    "Un-levered firm value  Vᵤ  (€ million)",
+    50.0, 500.0, 200.0, 10.0
+)
+T_c = sb.slider(
+    "Corporate tax rate  T꜀  (%)",
+    0.0, 50.0, 25.0, 0.5
+)
 
 sb.markdown("---")
 sb.subheader("Financial-distress costs")
 
-FD_total = sb.slider("PV of distress costs at 100 % debt  (€ million)",
-                     0.0, 150.0, 40.0, 1.0)
+FD_total = sb.slider(
+    "PV of distress costs at 100 % debt  (€ million)",
+    0.0, 150.0, 40.0, 1.0
+)
 
 # ───────────── FIXED SHAPE CONSTANTS ───────────── #
-BETA_DECAY  = 3.0   # speed at which tax advantage decays
-FD_EXPONENT = 2.0   # convexity of distress costs
+BETA_DECAY  = 3.0      # tax-benefit decay speed
+FD_EXPONENT = 2.0      # distress-cost convexity
 
 # ───────────── CALCULATE CURVES ───────────── #
 d_pct  = np.arange(0, 101)          # 0 … 100 %
 d_frac = d_pct / 100                # 0 … 1
 
 pv_tax = (T_c / 100) * V_U * d_frac * np.exp(-BETA_DECAY * d_frac)
-V_tax  = V_U + pv_tax               # red curve
+V_tax  = V_U + pv_tax
 
 pv_fd = FD_total * d_frac ** FD_EXPONENT
-V_L   = V_tax - pv_fd               # black curve
+V_L   = V_tax - pv_fd
 
 opt_idx   = int(np.argmax(V_L))
 opt_d_pct = d_pct[opt_idx]
@@ -68,15 +79,12 @@ st.subheader("Value components vs. leverage")
 
 fig = go.Figure()
 
-# Black curve
 fig.add_trace(go.Scatter(
     x=d_pct, y=V_L,
     mode="lines",
     name="V<sub>L</sub> (levered)",
     line=dict(color="black", width=3),
 ))
-
-# Red curve
 fig.add_trace(go.Scatter(
     x=d_pct, y=V_tax,
     mode="lines",
@@ -84,15 +92,18 @@ fig.add_trace(go.Scatter(
     line=dict(color="#d62728", width=2),
 ))
 
-# Indigo dashed Vᵤ line (annotation below the line)
+# Indigo dashed Vᵤ line + annotation further below in same colour
+INDIGO = "#6366F1"
 fig.add_hline(
     y=V_U,
-    line=dict(color="#6366F1", dash="dash"),
-    annotation=dict(
-        text="V<sub>U</sub> (un-levered)",
-        showarrow=False,
-        yshift=-20,                # ← below the line
-    ),
+    line=dict(color=INDIGO, dash="dash"),
+)
+fig.add_annotation(
+    x=2, y=V_U - (0.06 * V_U),          # move well below line
+    text="V<sub>U</sub> (un-levered)",
+    showarrow=False,
+    font=dict(size=12, color=INDIGO),
+    align="left",
 )
 
 # Vertical dashed optimum
@@ -100,7 +111,7 @@ fig.add_vline(
     x=opt_d_pct,
     line=dict(color="grey", dash="dash"),
     annotation=dict(
-        text=f"Optimal&nbsp;{opt_d_pct:.0f}%&nbsp;debt",
+        text=f"Optimal {opt_d_pct:.0f}% debt",
         textangle=-90,
         showarrow=False,
         yshift=10,
@@ -150,13 +161,16 @@ with st.expander("Data table"):
         "V (Tax only)": V_tax,
         "V Levered": V_L,
     })
-    st.dataframe(df.style.format("{:.2f}"),
-                 use_container_width=True, height=280)
+    st.dataframe(
+        df.style.format("{:.2f}"),
+        use_container_width=True,
+        height=280,
+    )
 
 # ───────────────────── FOOTER ───────────────────── #
 st.markdown(
     '<div style="text-align:center; padding-top:1rem; color:#6B7280;">'
-    'Optimal Capital Structure Visualiser&nbsp;•&nbsp;Developed by Prof.&nbsp;Marc&nbsp;Goergen'
+    'Optimal Capital Structure Visualiser&nbsp;|&nbsp;Developed by Prof.&nbsp;Marc&nbsp;Goergen&nbsp;with the help of&nbsp;ChatGPT'
     '</div>',
     unsafe_allow_html=True,
 )
