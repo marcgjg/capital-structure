@@ -78,7 +78,7 @@ fig.add_trace(go.Scatter(
 fig.add_trace(go.Scatter(
     x=d_pct, y=V_tax,
     mode="lines",
-    name="V (tax benefit only)",
+    name="V<sub>L</sub> (tax benefit only)",
     line=dict(color="#d62728", width=2),
 ))
 
