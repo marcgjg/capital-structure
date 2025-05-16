@@ -21,7 +21,6 @@ with st.expander("ℹ️ About this tool", expanded=False):
         * **Red curve** – levered value with **tax shield only**  
         * **Black curve** – levered value with **tax shield and distress costs**  
         * **Horizontal dashed** – unlevered value  
-        * **Grey dashed vertical** – optimal capital structure
         """,
         unsafe_allow_html=True,
     )
