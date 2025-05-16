@@ -3,12 +3,12 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-# ──────────────────────────── CONFIG ───────────────────────────── #
-
+# ─────────────────────── page setup ──────────────────────── #
 st.set_page_config(
-    page_title="Optimal Capital Structure • Tax Shield vs. Distress Costs",
+    page_title="Optimal Capital Structure",
     page_icon="📐",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 st.markdown(
@@ -16,107 +16,115 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-with st.expander("Model notes"):
+# ──────────────────── model explanation ──────────────────── #
+with st.expander("Model & formulas"):
     st.markdown(
-        """
-        *Value of levered firm*  
+        r"""
+The app evaluates the firm for every leverage point \(D/A \in [0,1]\).
 
-        \\[
-        V_L(D) \\,=\\, V_U \\, + \\, T_c \\times D
-                   \\, - \\, k \\; \\bigl(\\tfrac{D}{A}\\bigr)^{\\gamma} \\; A
-        \\]
+### Components  
 
-        where  
+| symbol | formula | description |
+|--------|---------|-------------|
+| \(V_U\) | *(slider)* | Value of unlevered firm |
+| PV(TS) | \(T_c \times D\) | Present value of corporate-tax shield |
+| PV(FD) | \(k \, (D/A)^{\gamma}\,A\) | Present value of expected financial-distress costs |
 
-        • **D** = Debt value (we vary it from 0 → 100 % of assets)  
-        • **A** = Total assets = *V<sub>U</sub>* in this simple set-up  
-        • **T<sub>c</sub>** = corporate tax rate (slider)  
-        • **k**, **γ** = scale & convexity of financial-distress costs (sliders)
+### Curves  
 
-        The peak of the black curve is the **optimal capital structure**.
+\[
+\begin{aligned}
+\text{Red: } V_{\text{tax}}(D) &= V_U + \text{PV(TS)} \\[4pt]
+\text{Black: } V_L(D) &= V_U + \text{PV(TS)} - \text{PV(FD)}
+\end{aligned}
+\]
+
+The **gap** between red and black is exactly PV(FD).  
+The optimal capital structure maximises \(V_L\).
         """,
         unsafe_allow_html=True,
     )
 
-# ──────────────────────────── INPUTS ───────────────────────────── #
+# ───────────────────────── inputs ────────────────────────── #
+left, right = st.columns([1, 2], gap="large")
 
-controls, plot_col = st.columns([1, 2], gap="large")
+with left:
+    st.subheader("Assumptions")
 
-with controls:
-    st.subheader("Key assumptions")
-
-    V_U = st.slider("Unlevered firm value  (V₍U₎) € million", 50.0, 500.0, 200.0, 10.0)
+    V_U = st.slider("Unlevered firm value  V₍U₎  (€ m)", 50.0, 500.0, 200.0, 10.0)
     tax_rate = st.slider("Corporate tax rate  T_c  (%)", 0.0, 50.0, 25.0, 0.5)
 
     st.markdown("### Financial-distress cost function")
-    k_scale = st.slider("Scale parameter  k", 0.0, 1.0, 0.15, 0.01)
+    k_scale = st.slider("Scale  k", 0.00, 1.00, 0.15, 0.01)
     gamma   = st.slider("Convexity  γ", 1.0, 4.0, 2.0, 0.1)
 
-# ───────────────────── COMPUTE CURVES ACROSS DEBT RANGE ───────────── #
+# ───────────── compute values across leverage range ───────── #
+debt_pct = np.arange(0, 101)                        # 0 … 100 %
+debt_val = V_U * debt_pct / 100                     # assumes Assets ≈ V_U
 
-debt_pct = np.arange(0, 101)                 # 0 … 100 %
-debt_val = V_U * debt_pct / 100              # € million (assets = V_U)
+pv_ts  = (tax_rate / 100) * debt_val
+pv_fd  = k_scale * (debt_val / V_U) ** gamma * V_U
 
-pv_tax   = (tax_rate / 100) * debt_val
-pv_fd    = k_scale * (debt_val / V_U) ** gamma * V_U
-V_lever  = V_U + pv_tax - pv_fd
+V_tax  = V_U + pv_ts                  # red
+V_lev  = V_tax - pv_fd                # black
 
-opt_idx  = np.argmax(V_lever)                # index of max firm value
+opt_idx   = np.argmax(V_lev)
 opt_d_pct = debt_pct[opt_idx]
-opt_value = V_lever[opt_idx]
+opt_value = V_lev[opt_idx]
 
 df = pd.DataFrame({
     "Debt %": debt_pct,
-    "PV Tax Shield": pv_tax,
-    "PV Distress Cost": pv_fd,
-    "Levered Firm Value": V_lever,
+    "V_unlevered": V_U,
+    "V_tax": V_tax,
+    "V_levered": V_lev,
+    "PV_tax_shield": pv_ts,
+    "PV_distress": pv_fd,
 })
 
-# ──────────────────────────── PLOTS ───────────────────────────── #
-
-with plot_col:
-    st.subheader("Value components vs. leverage")
+# ─────────────────────────── plot ────────────────────────── #
+with right:
+    st.subheader("Value vs. leverage")
 
     fig = go.Figure()
 
-    # black: levered firm value
+    # black – levered value
     fig.add_trace(
         go.Scatter(
-            x=debt_pct,
-            y=V_lever,
-            mode="lines",
-            name="V (L)  – Levered value",
+            x=debt_pct, y=V_lev,
+            mode="lines", name="Firm value incl. distress (black)",
             line=dict(color="black", width=3),
+            hovertemplate="Debt % %{x}<br>V_L €%{y:.1f} m<extra></extra>",
         )
     )
 
-    # blue: PV tax shield
+    # red – with tax only
     fig.add_trace(
         go.Scatter(
-            x=debt_pct,
-            y=pv_tax,
-            mode="lines",
-            name="PV (Tax shield)",
-            line=dict(color="#2563eb", width=2),
-        )
-    )
-
-    # red: PV distress costs
-    fig.add_trace(
-        go.Scatter(
-            x=debt_pct,
-            y=pv_fd,
-            mode="lines",
-            name="PV (Financial-distress costs)",
+            x=debt_pct, y=V_tax,
+            mode="lines", name="Firm value with tax shield only (red)",
             line=dict(color="#dc2626", width=2),
+            hovertemplate="Debt % %{x}<br>V_tax €%{y:.1f} m<extra></extra>",
         )
     )
 
-    # baseline V_U
+    # fill between red and black = PV(FD)
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate([debt_pct, debt_pct[::-1]]),
+            y=np.concatenate([V_tax, V_lev[::-1]]),
+            fill="toself",
+            fillcolor="rgba(220,38,38,0.15)",  # translucent red
+            line=dict(width=0),
+            hoverinfo="skip",
+            showlegend=False,
+        )
+    )
+
+    # horizontal V_U
     fig.add_hline(
         y=V_U,
         line=dict(dash="dash", color="grey"),
-        annotation=dict(text="V (U)", showarrow=False, yshift=10),
+        annotation=dict(text="V_U", showarrow=False, yshift=10),
     )
 
     # optimal vertical
@@ -124,26 +132,28 @@ with plot_col:
         x=opt_d_pct,
         line=dict(dash="dash", color="grey"),
         annotation=dict(
-            text=f"Optimal {opt_d_pct:.0f}% debt",
-            showarrow=False,
-            xshift=0,
-            yshift=10,
+            text=f"Optimal {opt_d_pct:.0f} % debt",
             textangle=-90,
+            yshift=10,
+            showarrow=False,
         ),
     )
 
     fig.update_layout(
-        xaxis_title="Debt as % of Assets",
-        yaxis_title="€ million",
+        xaxis_title="Debt as % of Assets  (≈ D / E)",
+        yaxis_title="Firm value  (€ million)",
         hovermode="x unified",
-        height=620,
         legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
+        height=620,
         margin=dict(l=80, r=80, t=30, b=40),
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.markdown(f"**Optimal debt ratio:** **{opt_d_pct:.0f} %**, giving a levered value of **€ {opt_value:,.1f} million**")
+    st.markdown(
+        f"**Optimal capital structure:** **{opt_d_pct:.0f} % debt**, "
+        f"giving a levered value of **€ {opt_value:,.1f} m**"
+    )
 
     with st.expander("Data"):
         st.dataframe(
@@ -152,11 +162,10 @@ with plot_col:
             height=300,
         )
 
-# ──────────────────────────── FOOTER ───────────────────────────── #
-
+# ───────────────────────── footer ────────────────────────── #
 st.markdown(
-    '<div style="text-align:center; padding-top:1.2rem; font-size:0.9rem;">'
-    'Prototype – tweak the functional form or parameters as you like!'
+    '<div style="text-align:center; font-size:0.9rem; padding-top:1rem;">'
+    'Capital-Structure model • red minus black = PV(distress costs)'
     '</div>',
     unsafe_allow_html=True,
 )
