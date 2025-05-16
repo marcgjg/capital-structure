@@ -15,14 +15,10 @@ st.markdown(
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
-        Visualises the **tax-shield vs. distress-cost** trade-off.
+        This tool enables you to visualize the **tax-shield vs. distress-cost** trade-off.
 
         * **Red** – firm value with **tax shield only**  
-        * **Black** – levered value after distress costs  
-        * **Indigo dashed** – un-levered value **V<sub>U</sub>**  
-        * **Grey dashed vertical** – debt ratio that maximises V<sub>L</sub>  
-        * **Dashed arrows** – PV (tax shield) & V<sub>L</sub> (offset for clarity)  
-        * **Grey dotted line** – PV (distress costs) just right of V<sub>L</sub>
+        * **Black** – firm value with **tax shield** and **after distress costs**  
         """,
         unsafe_allow_html=True,
     )
@@ -31,7 +27,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
 sb = st.sidebar
 sb.header("Core inputs")
 
-V_U = sb.slider("Un-levered firm value  Vᵤ  (€ million)",
+V_U = sb.slider("Unlevered firm value  Vᵤ  (€ million)",
                 50.0, 500.0, 200.0, 10.0)
 T_c = sb.slider("Corporate tax rate  T꜀  (%)",
                 0.0, 50.0, 25.0, 0.5)
@@ -84,11 +80,11 @@ fig.add_trace(go.Scatter(
     line=dict(color="#d62728", width=2),
 ))
 
-# un-levered baseline
+# unlevered baseline
 fig.add_hline(
     y=V_U,
     line=dict(color=INDIGO, dash="dash"),
-    annotation=dict(text="V<sub>U</sub> (un-levered)",
+    annotation=dict(text="V<sub>U</sub> (unlevered)",
                     showarrow=False, yshift=-18,
                     font=dict(size=12, color=INDIGO)),
 )
