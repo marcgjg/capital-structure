@@ -18,7 +18,7 @@ st.markdown(
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
-        This tool helps you visualize the **Classic Trade-off Theory**. Change the corporate tax rate and the present value (PV) of financial distress costs to see how this affects the optimal capital structure.
+        This tool helps you visualize the **Classic Trade-off Theory**. Change the corporate tax rate and the present value (PV) of financial distress costs to determine how this affects the optimal capital structure.
 
         * **Red curve** – **levered value** with **tax shield only**  
         * **Black curve** – **levered value** with **tax shield and distress costs  **
