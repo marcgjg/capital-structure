@@ -78,7 +78,7 @@ fig.add_trace(go.Scatter(x=d_pct, y=V_tax,
                          line=dict(color="#d62728", width=2)))
 
 fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
-              annotation=dict(text="V<sub>U</sub> (un-levered)",
+              annotation=dict(text="V<sub>U</sub> (unlevered)",
                               showarrow=False, yshift=-18,
                               font=dict(size=12, color=INDIGO)))
 
