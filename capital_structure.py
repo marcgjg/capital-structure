@@ -115,7 +115,7 @@ fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
                    showarrow=False, font=dict(size=12, color="grey"),
                    align="left")
 
-fig.update_layout(xaxis_title="Debt as % of Assets",
+fig.update_layout(xaxis_title="Debt/Equity",
                   yaxis_title="Firm value (€ million)",
                   hovermode="x unified",
                   font=dict(size=16),
