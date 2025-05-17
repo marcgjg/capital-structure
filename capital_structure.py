@@ -14,12 +14,13 @@ st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital 
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
-        This toool visualizes the trade-off between the **tax shield of debt** and the expected
+        This tool visualizes the trade-off between the **tax shield of debt** and the expected
         **costs of financial distress**.
 
         * **Red** – firm value with **tax shield only**  
         * **Black** – firm value with **tax shield** and **financial distress costs**  
         * **Horizontal indigo dashed** – unlevered firm value **V<sub>U</sub>**  
+        
         Note that in practice is not straightforward to estimate a firm's costs of financial distress.
         """,
         unsafe_allow_html=True,
