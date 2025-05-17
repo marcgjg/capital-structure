@@ -1,8 +1,7 @@
 streamlit
 matplotlib
+kaleido
 plotly
 numpy
 pandas
-plotly.graph_objects
 io
-kaleido
