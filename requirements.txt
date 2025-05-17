@@ -1,6 +1,5 @@
 streamlit
 matplotlib
-kaleido
 plotly
 numpy
 pandas
