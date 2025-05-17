@@ -20,6 +20,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
         * **Red** – firm value with **tax shield only**  
         * **Black** – firm value with **tax shield** and **financial distress costs**  
         * **Horizontal indigo dashed** – unlevered firm value **V<sub>U</sub>**  
+        Note that in practice is not straightforward to estimate a firm's costs of financial distress.
         """,
         unsafe_allow_html=True,
     )
