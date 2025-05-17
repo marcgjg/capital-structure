@@ -14,15 +14,12 @@ st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital 
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
         """
-        *Visualises the trade-off between the tax shield of debt and the expected
-        costs of financial distress.*
+        This toool visualizes the trade-off between the **tax shield of debt** and the expected
+        **costs of financial distress**.
 
         * **Red** – firm value with **tax shield only**  
-        * **Black** – levered value after distress costs  
-        * **Indigo dashed** – un-levered value **V<sub>U</sub>**  
-        * **Grey dashed vertical** – debt ratio that maximises V<sub>L</sub>  
-        * **Dashed arrows** – PV (tax shield) & V<sub>L</sub> (offset for clarity)  
-        * **Grey dotted line** – PV (distress costs) to the right
+        * **Black** – firm value with **tax shield** and **financial distress costs**  
+        * **Horizontal indigo dashed** – unlevered firm value **V<sub>U</sub>**  
         """,
         unsafe_allow_html=True,
     )
@@ -31,7 +28,7 @@ with st.expander("ℹ️ About this tool", expanded=False):
 sb = st.sidebar
 sb.header("Core inputs")
 
-V_U = sb.slider("Un-levered firm value  Vᵤ  (€ million)",
+V_U = sb.slider("Unlevered firm value  Vᵤ  (€ million)",
                 50.0, 500.0, 200.0, 10.0)
 T_c = sb.slider("Corporate tax rate  T꜀  (%)",
                 0.0, 50.0, 25.0, 0.5)
