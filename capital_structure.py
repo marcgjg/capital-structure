@@ -19,6 +19,9 @@ with st.expander("ℹ️ About this tool", expanded=False):
 
         * **Red** – firm value with **tax shield only**  
         * **Black** – firm value with **tax shield** and **after distress costs**  
+
+        Note that in practice it is not easy to estimate the costs of financial distress.
+        
         """,
         unsafe_allow_html=True,
     )
