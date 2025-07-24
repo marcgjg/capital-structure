@@ -76,7 +76,12 @@ with st.expander("🔍 Diagnostic Information", expanded=False):
     try:
         import kaleido
         st.write("✅ Kaleido installed")
-        st.write(f"Version: {kaleido.__version__}")
+        
+        # Try to get version, but don't fail if it doesn't exist
+        try:
+            st.write(f"Version: {kaleido.__version__}")
+        except AttributeError:
+            st.write("Version: (version info not available)")
         
         # Setup Chrome
         chrome_success, chrome_msg = setup_chrome_for_kaleido()
@@ -96,6 +101,8 @@ with st.expander("🔍 Diagnostic Information", expanded=False):
             
     except ImportError:
         st.write("❌ Kaleido not installed")
+    except Exception as e:
+        st.write(f"❌ Unexpected error: {str(e)}")
 
 # ℹ️  ABOUT PANEL ---------------------------------- #
 with st.expander("ℹ️ About this tool", expanded=False):
