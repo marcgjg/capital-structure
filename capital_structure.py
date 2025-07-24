@@ -582,6 +582,202 @@ def smart_svg_export_fixed(fig, d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, 
     manual_svg = create_editable_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total)
     return manual_svg, "Manual (Editable)"
 
+def try_plotly_svg_with_fixes(fig):
+    """Try multiple approaches to get Plotly's native SVG working"""
+    
+    # Method 1: Try with environment variables
+    try:
+        os.environ['PLOTLY_RENDERER'] = 'svg'
+        return fig.to_image(format="svg", width=1200, height=800, scale=2), "Plotly Native"
+    except:
+        pass
+    
+    # Method 2: Try with orca backend (if available)
+    try:
+        pio.orca.config.executable = '/usr/bin/orca'
+        return fig.to_image(format="svg", engine="orca"), "Plotly Orca"
+    except:
+        pass
+    
+    # Method 3: Try with different kaleido configuration
+    try:
+        pio.kaleido.scope.default_format = "svg"
+        return fig.to_image(format="svg"), "Plotly Kaleido"
+    except:
+        pass
+    
+    return None, "Failed"
+
+def create_simple_accurate_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total):
+    """Create simple, accurate, and editable SVG that matches the Plotly chart exactly"""
+    
+    # Simple dimensions for better editability
+    width, height = 1000, 700
+    margin_left, margin_right = 100, 150
+    margin_top, margin_bottom = 80, 100
+    plot_width = width - margin_left - margin_right
+    plot_height = height - margin_top - margin_bottom
+    
+    # Data bounds - exactly matching your chart
+    x_min, x_max = 0, 100
+    y_min = min(min(V_L), V_U) * 0.95
+    y_max = max(max(V_tax), V_U) * 1.05
+    
+    # Scaling functions
+    def x_scale(x): return margin_left + (x / 100) * plot_width
+    def y_scale(y): return height - margin_bottom - ((y - y_min) / (y_max - y_min)) * plot_height
+    
+    # Generate the exact curve data as SVG paths
+    def create_path(x_data, y_data):
+        path_commands = []
+        for i, (x, y) in enumerate(zip(x_data, y_data)):
+            command = "M" if i == 0 else "L"
+            path_commands.append(f"{command} {x_scale(x):.2f},{y_scale(y):.2f}")
+        return " ".join(path_commands)
+    
+    # Create paths for the data
+    v_levered_path = create_path(d_pct, V_L)
+    v_tax_path = create_path(d_pct, V_tax)
+    
+    # Key coordinates
+    opt_x = x_scale(opt_d_pct)
+    opt_y = y_scale(VL_top)
+    vu_y = y_scale(V_U)
+    
+    # Create grid lines
+    grid_lines = []
+    axis_labels = []
+    
+    # X grid and labels
+    for x in range(0, 101, 20):
+        x_pos = x_scale(x)
+        grid_lines.append(f'<line x1="{x_pos}" y1="{margin_top}" x2="{x_pos}" y2="{height - margin_bottom}" stroke="#f0f0f0" stroke-width="1"/>')
+        axis_labels.append(f'<text x="{x_pos}" y="{height - margin_bottom + 20}" text-anchor="middle" font-size="12" fill="#666">{x}%</text>')
+    
+    # Y grid and labels
+    for i in range(6):
+        y_val = y_min + (y_max - y_min) * i / 5
+        y_pos = y_scale(y_val)
+        grid_lines.append(f'<line x1="{margin_left}" y1="{y_pos}" x2="{width - margin_right}" y2="{y_pos}" stroke="#f0f0f0" stroke-width="1"/>')
+        axis_labels.append(f'<text x="{margin_left - 10}" y="{y_pos + 4}" text-anchor="end" font-size="12" fill="#666">{y_val:.0f}</text>')
+    
+    # SVG content with clean, editable structure
+    svg_content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<svg width="{width}" height="{height}" xmlns="http://www.w3.org/2000/svg">
+    
+    <!-- Background -->
+    <rect id="background" width="{width}" height="{height}" fill="white"/>
+    
+    <!-- Grid -->
+    <g id="grid">
+        {chr(10).join(grid_lines)}
+    </g>
+    
+    <!-- Main chart area border -->
+    <rect id="chart-border" x="{margin_left}" y="{margin_top}" width="{plot_width}" height="{plot_height}" 
+          fill="none" stroke="#ddd" stroke-width="1"/>
+    
+    <!-- Axes -->
+    <g id="axes">
+        <line id="x-axis" x1="{margin_left}" y1="{height - margin_bottom}" x2="{width - margin_right}" y2="{height - margin_bottom}" 
+              stroke="black" stroke-width="2"/>
+        <line id="y-axis" x1="{margin_left}" y1="{margin_top}" x2="{margin_left}" y2="{height - margin_bottom}" 
+              stroke="black" stroke-width="2"/>
+    </g>
+    
+    <!-- Axis labels -->
+    <g id="axis-labels">
+        {chr(10).join(axis_labels)}
+    </g>
+    
+    <!-- Axis titles -->
+    <g id="axis-titles">
+        <text id="x-title" x="{width/2}" y="{height - 20}" text-anchor="middle" font-size="16" font-weight="bold">Debt/Equity (%)</text>
+        <text id="y-title" x="20" y="{height/2}" text-anchor="middle" font-size="16" font-weight="bold" 
+              transform="rotate(-90, 20, {height/2})">Firm value (€ million)</text>
+    </g>
+    
+    <!-- Chart title -->
+    <text id="chart-title" x="{width/2}" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#1E3A8A">
+        📐 Optimal Capital Structure
+    </text>
+    
+    <!-- Reference lines -->
+    <g id="reference-lines">
+        <!-- Unlevered firm value line -->
+        <line id="unlevered-line" x1="{margin_left}" y1="{vu_y}" x2="{width - margin_right}" y2="{vu_y}" 
+              stroke="#6366F1" stroke-width="2" stroke-dasharray="8,5"/>
+        <!-- Optimal debt line -->
+        <line id="optimal-line" x1="{opt_x}" y1="{margin_top}" x2="{opt_x}" y2="{height - margin_bottom}" 
+              stroke="gray" stroke-width="1" stroke-dasharray="5,5"/>
+    </g>
+    
+    <!-- Data lines -->
+    <g id="data-lines">
+        <!-- Tax benefit line (red) -->
+        <path id="tax-benefit-line" d="{v_tax_path}" fill="none" stroke="#d62728" stroke-width="2.5"/>
+        <!-- Levered firm line (black) -->
+        <path id="levered-firm-line" d="{v_levered_path}" fill="none" stroke="black" stroke-width="3"/>
+    </g>
+    
+    <!-- Optimal point -->
+    <circle id="optimal-point" cx="{opt_x}" cy="{opt_y}" r="4" fill="red" stroke="white" stroke-width="2"/>
+    
+    <!-- Annotations -->
+    <g id="annotations">
+        <text id="optimal-text" x="{opt_x}" y="{margin_top - 10}" text-anchor="middle" font-size="12" fill="black">
+            Optimal: {opt_d_pct}% debt
+        </text>
+        <text id="value-text" x="{opt_x + 50}" y="{opt_y - 10}" font-size="12" fill="black">
+            €{VL_top:,.1f}M
+        </text>
+        <text id="vu-label" x="{width - margin_right - 40}" y="{vu_y - 5}" font-size="12" fill="#6366F1">
+            V_U (unlevered)
+        </text>
+    </g>
+    
+    <!-- Legend -->
+    <g id="legend" transform="translate({width - margin_right + 20}, {margin_top + 20})">
+        <rect id="legend-box" x="-10" y="-10" width="120" height="90" fill="white" stroke="#ddd" rx="5"/>
+        <text id="legend-title" x="0" y="5" font-size="14" font-weight="bold">Legend</text>
+        
+        <line id="legend-levered" x1="0" y1="20" x2="20" y2="20" stroke="black" stroke-width="3"/>
+        <text id="legend-levered-text" x="25" y="25" font-size="12">V_L (levered)</text>
+        
+        <line id="legend-tax" x1="0" y1="35" x2="20" y2="35" stroke="#d62728" stroke-width="2.5"/>
+        <text id="legend-tax-text" x="25" y="40" font-size="12">V (tax benefit)</text>
+        
+        <line id="legend-unlevered" x1="0" y1="50" x2="20" y2="50" stroke="#6366F1" stroke-width="2" stroke-dasharray="4,2"/>
+        <text id="legend-unlevered-text" x="25" y="55" font-size="12">V_U (unlevered)</text>
+        
+        <line id="legend-optimal" x1="0" y1="65" x2="20" y2="65" stroke="gray" stroke-width="1" stroke-dasharray="3,3"/>
+        <text id="legend-optimal-text" x="25" y="70" font-size="12">Optimal debt</text>
+    </g>
+    
+    <!-- Parameters info -->
+    <g id="parameters" transform="translate(20, {height - 50})">
+        <text id="param-title" x="0" y="0" font-size="12" font-weight="bold">Parameters:</text>
+        <text id="param-tax" x="0" y="15" font-size="11">Tax rate: {T_c}%</text>
+        <text id="param-vu" x="0" y="30" font-size="11">V_U: €{V_U:,.0f}M</text>
+        <text id="param-distress" x="120" y="15" font-size="11">Max distress: €{FD_total:,.0f}M</text>
+    </g>
+    
+</svg>'''
+    
+    return svg_content.encode()
+
+def ultimate_svg_export(fig, d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total):
+    """Ultimate SVG export: tries Plotly first, then creates accurate manual version"""
+    
+    # Try to get Plotly's native SVG (most accurate)
+    svg_data, method = try_plotly_svg_with_fixes(fig)
+    if svg_data:
+        return svg_data, f"Plotly ({method})"
+    
+    # Fallback to accurate manual SVG
+    manual_svg = create_simple_accurate_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total)
+    return manual_svg, "Manual (Accurate & Editable)"
+
 # ℹ️  ABOUT PANEL ---------------------------------- #
 with st.expander("ℹ️ About this tool", expanded=False):
     st.markdown(
@@ -704,14 +900,14 @@ st.subheader("📥 Export Options")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    # Smart SVG export with improved scaling and editability
-    svg_data, svg_method = smart_svg_export_fixed(fig, d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total)
+    # Ultimate SVG export - accurate and editable
+    svg_data, svg_method = ultimate_svg_export(fig, d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total)
     st.download_button(
         "⬇️ Download SVG",
         svg_data,
         file_name="capital_structure.svg",
         mime="image/svg+xml",
-        help=f"Fully editable SVG ({svg_method}) - No clipping, grouped elements"
+        help=f"Accurate & Editable SVG ({svg_method})"
     )
 
 with col2:
