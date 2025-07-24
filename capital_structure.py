@@ -1,3 +1,18 @@
+# Add this at the top of your app to diagnose
+st.write("🔍 **Quick Diagnostic:**")
+try:
+    import kaleido
+    st.write("✅ Kaleido installed")
+    
+    # Try a simple export
+    test_fig = go.Figure(go.Scatter(x=[1,2], y=[1,2]))
+    test_svg = test_fig.to_image(format="svg")
+    st.write("✅ SVG export working!")
+except Exception as e:
+    st.write(f"❌ Issue: {str(e)}")
+
+
+
 import streamlit as st
 import numpy as np
 import pandas as pd
