@@ -1,6 +1,5 @@
 streamlit
 plotly
+kaleido
 pandas
 numpy
-# kaleido - commented out as it causes issues on Streamlit Cloud
-# If you need static image export, kaleido works in local environments
