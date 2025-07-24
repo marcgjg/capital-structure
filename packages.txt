@@ -1,3 +1,0 @@
-google-chrome-stable
-chromium
-xvfb
