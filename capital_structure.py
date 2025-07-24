@@ -115,6 +115,7 @@ fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
                    showarrow=False, font=dict(size=12, color="grey"),
                    align="left")
 
+# Enable built-in plotly download functionality
 fig.update_layout(xaxis_title="Debt/Equity",
                   yaxis_title="Firm value (€ million)",
                   hovermode="x unified",
@@ -124,13 +125,34 @@ fig.update_layout(xaxis_title="Debt/Equity",
                               xanchor="center"),
                   margin=dict(l=80, r=80, t=30, b=40))
 
+# Display the chart with built-in download options
 st.plotly_chart(fig, use_container_width=True)
 
-# ───────────  DOWNLOAD SVG BUTTON  ─────────── #
-svg_bytes = fig.to_image(format="svg")    # needs kaleido installed
-st.download_button("⬇️ Download SVG", svg_bytes,
-                   file_name="capital_structure.svg",
-                   mime="image/svg+xml")
+# ───────────  ALTERNATIVE DOWNLOAD OPTIONS  ─────────── #
+col1, col2 = st.columns(2)
+
+with col1:
+    # HTML download option
+    html_string = fig.to_html(include_plotlyjs='cdn')
+    st.download_button(
+        "⬇️ Download HTML",
+        html_string,
+        file_name="capital_structure.html",
+        mime="text/html"
+    )
+
+with col2:
+    # Try SVG export with error handling
+    try:
+        svg_bytes = fig.to_image(format="svg")
+        st.download_button(
+            "⬇️ Download SVG",
+            svg_bytes,
+            file_name="capital_structure.svg",
+            mime="image/svg+xml"
+        )
+    except Exception as e:
+        st.info("💡 SVG export not available in this environment. Use the camera icon in the chart toolbar above to download images, or download the HTML version.")
 
 # ─────────── SUMMARY ─────────── #
 st.markdown(
