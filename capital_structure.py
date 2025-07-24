@@ -1,3 +1,12 @@
+import streamlit as st
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import io
+
+
+
+
 # Add this at the top of your app to diagnose
 st.write("🔍 **Quick Diagnostic:**")
 try:
@@ -13,11 +22,7 @@ except Exception as e:
 
 
 
-import streamlit as st
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-import io
+
 
 # ─────────────────  PAGE CONFIG  ───────────────── #
 st.set_page_config(page_title="Optimal Capital Structure",
