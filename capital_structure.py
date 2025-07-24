@@ -2,33 +2,100 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import io
-
-
-
-
-# Add this at the top of your app to diagnose
-st.write("🔍 **Quick Diagnostic:**")
-try:
-    import kaleido
-    st.write("✅ Kaleido installed")
-    
-    # Try a simple export
-    test_fig = go.Figure(go.Scatter(x=[1,2], y=[1,2]))
-    test_svg = test_fig.to_image(format="svg")
-    st.write("✅ SVG export working!")
-except Exception as e:
-    st.write(f"❌ Issue: {str(e)}")
-
-
-
-
+import plotly.io as pio
+import os
+import subprocess
+import sys
 
 # ─────────────────  PAGE CONFIG  ───────────────── #
 st.set_page_config(page_title="Optimal Capital Structure",
                    page_icon="📐", layout="wide")
 st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital Structure</h1>',
             unsafe_allow_html=True)
+
+def setup_chrome_for_kaleido():
+    """Setup Chrome/Chromium for kaleido with multiple fallback methods"""
+    
+    # Try to find Chrome/Chromium in common locations
+    possible_chrome_paths = [
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/opt/google/chrome/chrome',
+        '/snap/bin/chromium'
+    ]
+    
+    chrome_path = None
+    for path in possible_chrome_paths:
+        if os.path.exists(path):
+            chrome_path = path
+            break
+    
+    if chrome_path:
+        # Set environment variables
+        os.environ['CHROME_BIN'] = chrome_path
+        os.environ['GOOGLE_CHROME_BIN'] = chrome_path
+        os.environ['CHROMIUM_BIN'] = chrome_path
+        
+        # Configure kaleido
+        try:
+            pio.kaleido.scope.chromium_args = [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-software-rasterizer',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-features=TranslateUI',
+                '--disable-ipc-flooding-protection',
+                '--virtual-time-budget=5000',
+                '--run-all-compositor-stages-before-draw',
+                '--disable-checker-imaging'
+            ]
+            return True, f"Chrome found at: {chrome_path}"
+        except Exception as e:
+            return False, f"Chrome found but configuration failed: {str(e)}"
+    
+    return False, "Chrome/Chromium not found in system"
+
+def test_svg_generation():
+    """Test if SVG generation works"""
+    try:
+        test_fig = go.Figure(go.Scatter(x=[1,2,3], y=[1,2,3]))
+        svg_bytes = test_fig.to_image(format="svg", width=200, height=200)
+        return True, "SVG generation working!"
+    except Exception as e:
+        return False, str(e)
+
+# 🔍 ENHANCED DIAGNOSTIC SECTION
+with st.expander("🔍 Diagnostic Information", expanded=False):
+    st.write("**Kaleido Status:**")
+    
+    try:
+        import kaleido
+        st.write("✅ Kaleido installed")
+        st.write(f"Version: {kaleido.__version__}")
+        
+        # Setup Chrome
+        chrome_success, chrome_msg = setup_chrome_for_kaleido()
+        if chrome_success:
+            st.write(f"✅ {chrome_msg}")
+        else:
+            st.write(f"❌ {chrome_msg}")
+        
+        # Test SVG generation
+        svg_success, svg_msg = test_svg_generation()
+        if svg_success:
+            st.write(f"✅ {svg_msg}")
+            st.success("SVG export should work!")
+        else:
+            st.write(f"❌ SVG test failed: {svg_msg}")
+            st.warning("SVG export may not work")
+            
+    except ImportError:
+        st.write("❌ Kaleido not installed")
 
 # ℹ️  ABOUT PANEL ---------------------------------- #
 with st.expander("ℹ️ About this tool", expanded=False):
@@ -135,7 +202,6 @@ fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
                    showarrow=False, font=dict(size=12, color="grey"),
                    align="left")
 
-# Enable built-in plotly download functionality
 fig.update_layout(xaxis_title="Debt/Equity",
                   yaxis_title="Firm value (€ million)",
                   hovermode="x unified",
@@ -145,34 +211,58 @@ fig.update_layout(xaxis_title="Debt/Equity",
                               xanchor="center"),
                   margin=dict(l=80, r=80, t=30, b=40))
 
-# Display the chart with built-in download options
 st.plotly_chart(fig, use_container_width=True)
 
-# ───────────  ALTERNATIVE DOWNLOAD OPTIONS  ─────────── #
-col1, col2 = st.columns(2)
+# ───────────  SMART DOWNLOAD SECTION  ─────────── #
+st.subheader("📥 Export Options")
+
+# Setup Chrome before attempting exports
+chrome_setup, _ = setup_chrome_for_kaleido()
+
+col1, col2, col3 = st.columns(3)
 
 with col1:
-    # HTML download option
+    # SVG with smart error handling
+    if chrome_setup:
+        try:
+            svg_bytes = fig.to_image(format="svg", width=1200, height=620, scale=2)
+            st.download_button(
+                "⬇️ Download SVG",
+                svg_bytes,
+                file_name="capital_structure.svg",
+                mime="image/svg+xml",
+                help="High-quality SVG vector graphics"
+            )
+        except Exception as e:
+            st.error(f"SVG export failed: {str(e)}")
+            st.info("💡 Try refreshing the page or use PNG export instead.")
+    else:
+        st.info("💡 SVG export requires Chrome browser in the system")
+
+with col2:
+    # PNG (more reliable fallback)
+    try:
+        png_bytes = fig.to_image(format="png", width=1200, height=620, scale=2)
+        st.download_button(
+            "⬇️ Download PNG",
+            png_bytes,
+            file_name="capital_structure.png",
+            mime="image/png",
+            help="High-quality PNG image"
+        )
+    except Exception as e:
+        st.info("💡 Use the camera icon in the chart toolbar above for PNG download.")
+
+with col3:
+    # HTML (always works)
     html_string = fig.to_html(include_plotlyjs='cdn')
     st.download_button(
         "⬇️ Download HTML",
         html_string,
         file_name="capital_structure.html",
-        mime="text/html"
+        mime="text/html",
+        help="Interactive HTML file"
     )
-
-with col2:
-    # Try SVG export with error handling
-    try:
-        svg_bytes = fig.to_image(format="svg")
-        st.download_button(
-            "⬇️ Download SVG",
-            svg_bytes,
-            file_name="capital_structure.svg",
-            mime="image/svg+xml"
-        )
-    except Exception as e:
-        st.info("💡 SVG export not available in this environment. Use the camera icon in the chart toolbar above to download images, or download the HTML version.")
 
 # ─────────── SUMMARY ─────────── #
 st.markdown(
