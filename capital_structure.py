@@ -1,3 +1,16 @@
+import streamlit as st
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
+import os
+
+# ─────────────────  PAGE CONFIG  ───────────────── #
+st.set_page_config(page_title="Optimal Capital Structure",
+                   page_icon="📐", layout="wide")
+st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital Structure</h1>',
+            unsafe_allow_html=True)
+
 def create_production_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total):
     """Create high-quality SVG manually - publication ready"""
     
@@ -143,20 +156,235 @@ def create_production_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_tot
         <text x="0" y="0" class="annotation" style="font-weight: 600;">Parameters:</text>
         <text x="0" y="15" class="annotation">Tax rate: {T_c}%</text>
         <text x="0" y="30" class="annotation">V<tspan baseline-shift="sub" font-size="10">U</tspan>: €{V_U:,.0f}M</text>
-        <text import streamlit as st
-import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
-import plotly.io as pio
-import os
+        <text x="120" y="15" class="annotation">Max distress cost: €{FD_total:,.0f}M</text>
+    </g>
+    
+    <!-- Footer -->
+    <text x="{width/2}" y="{height - 8}" class="annotation">
+        Developed by Prof. Marc Goergen with the help of ChatGPT
+    </text>
+</svg>'''
+    
+    return svg_content.encode()
 
-# ─────────────────  PAGE CONFIG  ───────────────── #
-st.set_page_config(page_title="Optimal Capital Structure",
-                   page_icon="📐", layout="wide")
-st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital Structure</h1>',
-            unsafe_allow_html=True)
-
-def create_production_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total):
+def create_editable_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total):
+    """Create fully editable SVG with proper grouping and no clipping"""
+    
+    # Increased dimensions and margins to prevent clipping
+    width, height = 1400, 900
+    margin = {"top": 100, "right": 200, "bottom": 120, "left": 150}
+    chart_width = width - margin["left"] - margin["right"]
+    chart_height = height - margin["top"] - margin["bottom"]
+    
+    # Data scaling with padding to prevent clipping
+    x_min, x_max = 0, 100
+    y_min = min(min(V_L), V_U) * 0.85  # More padding
+    y_max = max(max(V_tax), V_U) * 1.15  # More padding
+    
+    def scale_x(x): return margin["left"] + (x - x_min) * chart_width / (x_max - x_min)
+    def scale_y(y): return height - margin["bottom"] - (y - y_min) * chart_height / (y_max - y_min)
+    
+    # Create individual data points for better editability
+    def create_data_points(x_data, y_data, group_name, color, stroke_width):
+        points_list = []
+        path_data = []
+        
+        for i, (x, y) in enumerate(zip(x_data, y_data)):
+            x_pos, y_pos = scale_x(x), scale_y(y)
+            points_list.append(f'<circle cx="{x_pos}" cy="{y_pos}" r="1" fill="{color}" class="{group_name}-point" id="{group_name}-point-{i}"/>')
+            if i == 0:
+                path_data.append(f"M {x_pos},{y_pos}")
+            else:
+                path_data.append(f"L {x_pos},{y_pos}")
+        
+        path_string = " ".join(path_data)
+        
+        return f'''
+    <g id="{group_name}-group" class="{group_name}">
+        <path d="{path_string}" stroke="{color}" stroke-width="{stroke_width}" fill="none" 
+              stroke-linecap="round" stroke-linejoin="round" id="{group_name}-line"/>
+        <!-- Data points for editing -->
+        {chr(10).join(points_list)}
+    </g>'''
+    
+    # Generate line groups
+    vl_group = create_data_points(d_pct, V_L, "levered-firm", "#000000", 3)
+    vtax_group = create_data_points(d_pct, V_tax, "tax-benefit", "#d62728", 2.5)
+    
+    # Key coordinates
+    opt_x, opt_y = scale_x(opt_d_pct), scale_y(VL_top)
+    vu_y = scale_y(V_U)
+    
+    # Grid generation
+    x_grid_lines = []
+    x_labels = []
+    for x in range(0, 101, 10):  # More grid lines
+        x_pos = scale_x(x)
+        x_grid_lines.append(f'<line x1="{x_pos}" y1="{margin["top"]}" x2="{x_pos}" y2="{height - margin["bottom"]}" class="grid-x" id="grid-x-{x}"/>')
+        if x % 20 == 0:  # Labels every 20%
+            x_labels.append(f'<text x="{x_pos}" y="{height - margin["bottom"] + 25}" class="axis-label" id="x-label-{x}">{x}%</text>')
+    
+    y_ticks = np.linspace(y_min, y_max, 8)  # More ticks
+    y_grid_lines = []
+    y_labels = []
+    for i, y in enumerate(y_ticks):
+        y_pos = scale_y(y)
+        y_grid_lines.append(f'<line x1="{margin["left"]}" y1="{y_pos}" x2="{width - margin["right"]}" y2="{y_pos}" class="grid-y" id="grid-y-{i}"/>')
+        y_labels.append(f'<text x="{margin["left"] - 15}" y="{y_pos + 5}" class="axis-label" id="y-label-{i}">{y:.0f}</text>')
+    
+    # Create CSS as a separate string to avoid f-string conflicts
+    css_styles = """
+            /* Chart Lines */
+            .levered-firm { stroke: #000000; stroke-width: 3; fill: none; }
+            .tax-benefit { stroke: #d62728; stroke-width: 2.5; fill: none; }
+            .unlevered-line { stroke: #6366F1; stroke-width: 2; stroke-dasharray: 8,5; fill: none; }
+            .optimal-line { stroke: #666666; stroke-width: 1.5; stroke-dasharray: 5,5; fill: none; }
+            
+            /* Grid and Axes */
+            .grid-x, .grid-y { stroke: #e5e5e5; stroke-width: 0.5; }
+            .axis { stroke: #333333; stroke-width: 1.5; }
+            
+            /* Text Styles */
+            .axis-label { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; fill: #444444; text-anchor: middle; }
+            .axis-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 16px; fill: #333333; text-anchor: middle; font-weight: 500; }
+            .title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 24px; font-weight: bold; fill: #1E3A8A; text-anchor: middle; }
+            .legend-text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; fill: #333333; }
+            .annotation { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; fill: #666666; }
+            
+            /* Interactive Elements */
+            .optimal-point { fill: #ff4444; stroke: white; stroke-width: 2; }
+            .levered-firm-point, .tax-benefit-point { opacity: 0; } /* Hidden but selectable */
+            .levered-firm-point:hover, .tax-benefit-point:hover { opacity: 1; }
+    """
+    
+    # SVG with proper structure for editing
+    svg_content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <style>{css_styles}</style>
+    </defs>
+    
+    <!-- Background -->
+    <rect width="{width}" height="{height}" fill="white" id="background"/>
+    
+    <!-- Title Group -->
+    <g id="title-group">
+        <text x="{width/2}" y="50" class="title" id="main-title">📐 Optimal Capital Structure</text>
+    </g>
+    
+    <!-- Grid Group -->
+    <g id="grid-group">
+        {chr(10).join(x_grid_lines)}
+        {chr(10).join(y_grid_lines)}
+    </g>
+    
+    <!-- Chart Border -->
+    <g id="chart-border-group">
+        <rect x="{margin['left']}" y="{margin['top']}" width="{chart_width}" height="{chart_height}" 
+              fill="none" stroke="#dddddd" stroke-width="1" id="chart-border"/>
+    </g>
+    
+    <!-- Axes Group -->
+    <g id="axes-group">
+        <line x1="{margin['left']}" y1="{height - margin['bottom']}" x2="{width - margin['right']}" y2="{height - margin['bottom']}" class="axis" id="x-axis"/>
+        <line x1="{margin['left']}" y1="{margin['top']}" x2="{margin['left']}" y2="{height - margin['bottom']}" class="axis" id="y-axis"/>
+    </g>
+    
+    <!-- Reference Lines Group -->
+    <g id="reference-lines-group">
+        <!-- V_U horizontal line -->
+        <line x1="{margin['left']}" y1="{vu_y}" x2="{width - margin['right']}" y2="{vu_y}" 
+              class="unlevered-line" id="unlevered-line"/>
+        <!-- Optimal debt vertical line -->
+        <line x1="{opt_x}" y1="{margin['top']}" x2="{opt_x}" y2="{height - margin['bottom']}" 
+              class="optimal-line" id="optimal-debt-line"/>
+    </g>
+    
+    <!-- Data Lines Group -->
+    <g id="data-lines-group">
+        {vtax_group}
+        {vl_group}
+    </g>
+    
+    <!-- Optimal Point Group -->
+    <g id="optimal-point-group">
+        <circle cx="{opt_x}" cy="{opt_y}" r="5" class="optimal-point" id="optimal-point"/>
+    </g>
+    
+    <!-- Labels Group -->
+    <g id="labels-group">
+        <!-- X-axis labels -->
+        <g id="x-labels-group">
+            {chr(10).join(x_labels)}
+        </g>
+        <!-- Y-axis labels -->  
+        <g id="y-labels-group">
+            {chr(10).join(y_labels)}
+        </g>
+    </g>
+    
+    <!-- Axis Titles Group -->
+    <g id="axis-titles-group">
+        <text x="{width/2}" y="{height - 30}" class="axis-title" id="x-axis-title">Debt/Equity (%)</text>
+        <text x="30" y="{height/2}" class="axis-title" id="y-axis-title" transform="rotate(-90 30 {height/2})">Firm value (€ million)</text>
+    </g>
+    
+    <!-- Legend Group -->
+    <g id="legend-group" transform="translate({width - margin['right'] + 30}, {margin['top'] + 50})">
+        <rect x="-20" y="-20" width="160" height="140" fill="white" stroke="#dddddd" stroke-width="1" rx="5" id="legend-background"/>
+        <text x="0" y="0" class="legend-text" id="legend-title" style="font-weight: 600;">Legend</text>
+        
+        <g id="legend-levered">
+            <line x1="0" y1="25" x2="30" y2="25" class="levered-firm" id="legend-levered-line"/>
+            <text x="35" y="30" class="legend-text" id="legend-levered-text">V<tspan baseline-shift="sub" font-size="11">L</tspan> (levered)</text>
+        </g>
+        
+        <g id="legend-tax">
+            <line x1="0" y1="50" x2="30" y2="50" class="tax-benefit" id="legend-tax-line"/>
+            <text x="35" y="55" class="legend-text" id="legend-tax-text">V (tax benefit only)</text>
+        </g>
+        
+        <g id="legend-unlevered">
+            <line x1="0" y1="75" x2="30" y2="75" class="unlevered-line" id="legend-unlevered-line"/>
+            <text x="35" y="80" class="legend-text" id="legend-unlevered-text">V<tspan baseline-shift="sub" font-size="11">U</tspan> (unlevered)</text>
+        </g>
+        
+        <g id="legend-optimal">
+            <line x1="0" y1="100" x2="30" y2="100" class="optimal-line" id="legend-optimal-line"/>
+            <text x="35" y="105" class="legend-text" id="legend-optimal-text">Optimal debt</text>
+        </g>
+    </g>
+    
+    <!-- Annotations Group -->
+    <g id="annotations-group">
+        <text x="{opt_x}" y="{margin['top'] - 15}" class="annotation" id="optimal-annotation" text-anchor="middle">
+            Optimal: {opt_d_pct}% debt
+        </text>
+        <text x="{opt_x + 80}" y="{opt_y - 15}" class="annotation" id="value-annotation">
+            €{VL_top:,.1f}M
+        </text>
+        <text x="{width - margin['right'] - 60}" y="{vu_y - 12}" class="annotation" id="vu-annotation">
+            V<tspan baseline-shift="sub" font-size="10">U</tspan>
+        </text>
+    </g>
+    
+    <!-- Parameters Group -->
+    <g id="parameters-group" transform="translate(40, {height - 80})">
+        <text x="0" y="0" class="annotation" id="params-title" style="font-weight: 600;">Parameters:</text>
+        <text x="0" y="18" class="annotation" id="tax-rate-param">Tax rate: {T_c}%</text>
+        <text x="0" y="36" class="annotation" id="vu-param">V<tspan baseline-shift="sub" font-size="10">U</tspan>: €{V_U:,.0f}M</text>
+        <text x="150" y="18" class="annotation" id="distress-param">Max distress cost: €{FD_total:,.0f}M</text>
+    </g>
+    
+    <!-- Footer Group -->
+    <g id="footer-group">
+        <text x="{width/2}" y="{height - 15}" class="annotation" id="footer-text" text-anchor="middle">
+            Developed by Prof. Marc Goergen with the help of ChatGPT
+        </text>
+    </g>
+</svg>'''
+    
+    return svg_content.encode()
     """Create high-quality SVG manually - publication ready"""
     
     # Chart dimensions and styling
@@ -332,6 +560,27 @@ def smart_svg_export(fig, d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_tot
     # Fallback to manual high-quality SVG
     manual_svg = create_production_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total)
     return manual_svg, "Manual"
+
+def smart_svg_export_fixed(fig, d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total):
+    """Fixed SVG export with proper scaling and editability"""
+    
+    # Try kaleido/plotly export first
+    try:
+        # Configure environment
+        chrome_paths = ['/usr/bin/chromium-browser', '/usr/bin/chromium', '/usr/bin/google-chrome']
+        for path in chrome_paths:
+            if os.path.exists(path):
+                os.environ['CHROME_BIN'] = path
+                break
+        
+        svg_bytes = fig.to_image(format="svg", width=1400, height=900, scale=2)
+        return svg_bytes, "Plotly/Kaleido"
+    except:
+        pass
+    
+    # Fallback to improved manual SVG
+    manual_svg = create_editable_svg(d_pct, V_L, V_tax, V_U, opt_d_pct, VL_top, T_c, FD_total)
+    return manual_svg, "Manual (Editable)"
 
 # ℹ️  ABOUT PANEL ---------------------------------- #
 with st.expander("ℹ️ About this tool", expanded=False):
