@@ -92,7 +92,7 @@ fig.add_shape(type="line", x0=x_right, x1=x_right,
               y0=V_U, y1=VL_top,
               line=dict(color="black", dash="dot"))
 fig.add_annotation(x=x_right, y=V_U,
-                   text="Value of levered firm",
+                   text="Net gain from debt",
                    showarrow=False, font=dict(size=12, color="black"),
                    xanchor="center", yanchor="top", yshift=-6)
 
