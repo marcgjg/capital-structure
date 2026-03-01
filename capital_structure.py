@@ -57,7 +57,7 @@ fig.add_trace(go.Scatter(x=d_pct, y=V_L,
                          mode="lines", name="V<sub>L</sub> (levered)",
                          line=dict(color="black", width=3)))
 fig.add_trace(go.Scatter(x=d_pct, y=V_tax,
-                         mode="lines", name="V (tax benefit only)",
+                         mode="lines", name="V (tax shield only)",
                          line=dict(color="#d62728", width=2)))
 
 fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
@@ -93,10 +93,10 @@ fig.add_annotation(x=x_right, y=V_U,
 fig.add_shape(type="line", x0=x_dist, x1=x_dist,
               y0=VDist_bot, y1=VDist_top,
               line=dict(color="grey", dash="dot"))
-fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
+fig.add_annotation(x=x_dist, y=VDist_bot,
                    text="PV(distress costs)",
                    showarrow=False, font=dict(size=12, color="grey"),
-                   align="left")
+                   xanchor="center", yanchor="top", yshift=-6)
 
 fig.update_layout(xaxis_title="Debt as % of Assets",
                   yaxis_title="Firm value (€ million)",
