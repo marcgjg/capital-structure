@@ -71,25 +71,25 @@ fig.add_vline(x=opt_d_pct, line=dict(color="grey", dash="dash"),
                               yanchor="bottom", yref="paper", y=0.02,
                               font=dict(size=12, color="grey")))
 
-# PV (tax shield)
+# PV (tax shield) — label just below the bottom of the bracket (at V_U)
 fig.add_shape(type="line", x0=x_left, x1=x_left,
               y0=V_U, y1=PVTS_top,
               line=dict(color="#d62728", dash="dot"))
-fig.add_annotation(x=x_left - 1.5, y=(V_U + PVTS_top)/2,
+fig.add_annotation(x=x_left, y=V_U,
                    text="PV (tax shield)",
                    showarrow=False, font=dict(size=12, color="#d62728"),
-                   align="right")
+                   xanchor="center", yanchor="top", yshift=-6)
 
-# V_L
+# V_L — label just below the bottom of the bracket (at V_U)
 fig.add_shape(type="line", x0=x_right, x1=x_right,
               y0=V_U, y1=VL_top,
               line=dict(color="black", dash="dot"))
-fig.add_annotation(x=x_right + 1.5, y=(V_U + VL_top)/2,
+fig.add_annotation(x=x_right, y=V_U,
                    text="Value of levered firm",
                    showarrow=False, font=dict(size=12, color="black"),
-                   align="left")
+                   xanchor="center", yanchor="top", yshift=-6)
 
-# PV(distress)
+# PV(distress) — label stays beside the bracket as before (spans below V_U)
 fig.add_shape(type="line", x0=x_dist, x1=x_dist,
               y0=VDist_bot, y1=VDist_top,
               line=dict(color="grey", dash="dot"))
