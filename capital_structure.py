@@ -71,32 +71,47 @@ fig.add_vline(x=opt_d_pct, line=dict(color="grey", dash="dash"),
                               yanchor="bottom", yref="paper", y=0.02,
                               font=dict(size=12, color="grey")))
 
-# PV (tax shield)
+# PV (tax shield) — bracket + arrow pointing left into open space
 fig.add_shape(type="line", x0=x_left, x1=x_left,
               y0=V_U, y1=PVTS_top,
               line=dict(color="#d62728", dash="dot"))
-fig.add_annotation(x=x_left - 1.5, y=(V_U + PVTS_top)/2,
-                   text="PV (tax shield)",
-                   showarrow=False, font=dict(size=12, color="#d62728"),
-                   align="right")
+fig.add_annotation(
+    ax=x_left, ay=(V_U + PVTS_top) / 2,
+    x=max(2, x_left - 20), y=(V_U + PVTS_top) / 2,
+    text="PV (tax shield)",
+    showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.2,
+    arrowcolor="#d62728",
+    font=dict(size=12, color="#d62728"),
+    xanchor="right"
+)
 
-# V_L
+# Value of levered firm — bracket + arrow pointing upward-right
 fig.add_shape(type="line", x0=x_right, x1=x_right,
               y0=V_U, y1=VL_top,
               line=dict(color="black", dash="dot"))
-fig.add_annotation(x=x_right + 1.5, y=(V_U + VL_top)/2,
-                   text="Value of levered firm",
-                   showarrow=False, font=dict(size=12, color="black"),
-                   align="left")
+fig.add_annotation(
+    ax=x_right, ay=(V_U + VL_top) / 2,
+    x=min(98, x_right + 20), y=(V_U + VL_top) / 2 + abs(PVTS_top - V_U) * 0.4,
+    text="Value of<br>levered firm",
+    showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.2,
+    arrowcolor="black",
+    font=dict(size=12, color="black"),
+    xanchor="left"
+)
 
-# PV(distress)
+# PV(distress costs) — bracket + arrow pointing downward-right
 fig.add_shape(type="line", x0=x_dist, x1=x_dist,
               y0=VDist_bot, y1=VDist_top,
               line=dict(color="grey", dash="dot"))
-fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
-                   text="PV(distress costs)",
-                   showarrow=False, font=dict(size=12, color="grey"),
-                   align="left")
+fig.add_annotation(
+    ax=x_dist, ay=(VDist_bot + VDist_top) / 2,
+    x=min(98, x_dist + 20), y=(VDist_bot + VDist_top) / 2 - abs(PVTS_top - V_U) * 0.4,
+    text="PV (distress costs)",
+    showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.2,
+    arrowcolor="grey",
+    font=dict(size=12, color="grey"),
+    xanchor="left"
+)
 
 fig.update_layout(xaxis_title="Debt as % of Assets",
                   yaxis_title="Firm value (€ million)",
