@@ -13,7 +13,7 @@ st.markdown('<h1 style="text-align:center; color:#1E3A8A;">📐 Optimal Capital 
 sb = st.sidebar
 sb.header("Core inputs")
 
-V_U = sb.slider("Un‑levered firm value  Vᵤ  (€ million)",
+V_U = sb.slider("Unlevered firm value  Vᵤ  (€ million)",
                 50.0, 500.0, 200.0, 10.0)
 T_c = sb.slider("Corporate tax rate  T꜀  (%)",
                 0.0, 50.0, 25.0, 0.5)
@@ -61,7 +61,7 @@ fig.add_trace(go.Scatter(x=d_pct, y=V_tax,
                          line=dict(color="#d62728", width=2)))
 
 fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
-              annotation=dict(text="V<sub>U</sub> (un‑levered)",
+              annotation=dict(text="V<sub>U</sub> (unlevered)",
                               showarrow=False, yshift=-18,
                               font=dict(size=12, color=INDIGO)))
 
@@ -92,7 +92,7 @@ fig.add_shape(type="line", x0=x_dist, x1=x_dist,
               y0=VDist_bot, y1=VDist_top,
               line=dict(color="grey", dash="dot"))
 fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
-                   text="PV of distress costs",
+                   text="PV(distress costs)",
                    showarrow=False, font=dict(size=12, color="grey"),
                    align="left")
 
