@@ -93,10 +93,10 @@ fig.add_annotation(x=x_right, y=V_U,
 fig.add_shape(type="line", x0=x_dist, x1=x_dist,
               y0=VDist_bot, y1=VDist_top,
               line=dict(color="grey", dash="dot"))
-fig.add_annotation(x=x_dist, y=VDist_bot,
+fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
                    text="PV(distress costs)",
                    showarrow=False, font=dict(size=12, color="grey"),
-                   xanchor="center", yanchor="top", yshift=-6)
+                   xanchor="left", align="left")
 
 fig.update_layout(xaxis_title="Debt as % of Assets",
                   yaxis_title="Firm value (€ million)",
