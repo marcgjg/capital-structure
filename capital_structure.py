@@ -65,11 +65,18 @@ fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
                               showarrow=False, yshift=-18,
                               font=dict(size=12, color=INDIGO)))
 
-fig.add_vline(x=opt_d_pct, line=dict(color="grey", dash="dash"),
-              annotation=dict(text=f"Optimal {opt_d_pct}% debt",
-                              textangle=-90, showarrow=False,
-                              yanchor="bottom", yref="paper", y=0.02,
-                              font=dict(size=12, color="grey")))
+fig.add_shape(type="line", x0=opt_d_pct, x1=opt_d_pct,
+              y0=0, y1=1, yref="paper",
+              line=dict(color="grey", dash="dash"))
+# Place "Optimal X% debt" label on the opposite side from "Value of levered firm"
+_opt_xanchor = "right" if abs(opt_d_pct - x_right) < 15 else "left"
+_opt_xshift  = -6 if _opt_xanchor == "right" else 6
+fig.add_annotation(x=opt_d_pct, y=0.02, yref="paper",
+                   text=f"Optimal {opt_d_pct}% debt",
+                   textangle=-90, showarrow=False,
+                   xanchor=_opt_xanchor, yanchor="bottom",
+                   xshift=_opt_xshift,
+                   font=dict(size=12, color="grey"))
 
 # PV (tax shield) — label just below the bottom of the bracket (at V_U)
 fig.add_shape(type="line", x0=x_left, x1=x_left,
