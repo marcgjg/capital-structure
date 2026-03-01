@@ -67,7 +67,9 @@ fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
 
 fig.add_vline(x=opt_d_pct, line=dict(color="grey", dash="dash"),
               annotation=dict(text=f"Optimal {opt_d_pct}% debt",
-                              textangle=-90, showarrow=False, yshift=10))
+                              textangle=-90, showarrow=False,
+                              yanchor="bottom", yref="paper", y=0.02,
+                              font=dict(size=12, color="grey")))
 
 # PV (tax shield)
 fig.add_shape(type="line", x0=x_left, x1=x_left,
