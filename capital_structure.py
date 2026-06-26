@@ -147,7 +147,7 @@ st.plotly_chart(fig, use_container_width=True, config=config)
 
 st.markdown(
     f"**Optimal capital structure:** **{opt_d_pct}% debt**, "
-    f"levered firm value **€{VL_top:,.1f} million**"
+    f"levered firm value **€{V_L[opt_idx]:,.1f} million**"
 )
 
 with st.expander("Data table"):
