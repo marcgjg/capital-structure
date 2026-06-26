@@ -163,7 +163,7 @@ with st.expander("Data table"):
 
 st.markdown(
     '<div style="text-align:center; padding-top:1rem; color:#6B7280;">'
-    'Optimal Capital Structure Visualiser&nbsp;|&nbsp;Developed by Prof.&nbsp;Marc&nbsp;Goergen&nbsp;with the help of&nbsp;ChatGPT'
+    'Optimal Capital Structure Visualiser&nbsp;|&nbsp;Developed by Prof.&nbsp;Marc&nbsp;Goergen&nbsp;with the help of&nbsp;ChatGPT and Claude'
     '</div>',
     unsafe_allow_html=True,
 )
