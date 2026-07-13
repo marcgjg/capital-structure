@@ -65,8 +65,17 @@ fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
                               showarrow=False, yshift=-18,
                               font=dict(size=12, color=INDIGO)))
 
+# ── Compute explicit y-axis range so the vertical line doesn't extend it ──
+y_min_data = min(min(V_L), min(V_tax), V_U)
+y_max_data = max(max(V_L), max(V_tax), V_U)
+y_pad      = (y_max_data - y_min_data) * 0.05
+y_range    = [y_min_data - y_pad, y_max_data + y_pad]
+
+# Convert V_L[opt_idx] to a paper coordinate (0–1) within that range
+y1_paper = (V_L[opt_idx] - y_range[0]) / (y_range[1] - y_range[0])
+
 fig.add_shape(type="line", x0=opt_d_pct, x1=opt_d_pct,
-              y0=min(V_L), y1=V_L[opt_idx], yref="y",
+              y0=0, y1=y1_paper, yref="paper",
               line=dict(color="grey", dash="dash"))
 # Place "Optimal X% debt" label on the opposite side from "Value of levered firm"
 _opt_xanchor = "right" if abs(opt_d_pct - x_right) < 15 else "left"
@@ -134,6 +143,7 @@ fig.add_annotation(x=x_dist + 1.5, y=(VDist_bot + VDist_top)/2,
 
 fig.update_layout(xaxis_title="Debt as % of Assets",
                   yaxis_title="Firm value (€ million)",
+                  yaxis=dict(range=y_range),
                   hovermode="x unified",
                   font=dict(size=16),
                   height=620,
@@ -167,7 +177,7 @@ svg_html = f"""
 (function() {{
     var figData = {fig_json};
     document.getElementById('btn-svg-cs').addEventListener('click', function() {{
-        Plotly.toImage(figData, {{format: 'svg', width: {svg_width}, height: {int(svg_width * 7/12)}}})
+        Plotly.toImage(figData, {{format: 'svg', width: {svg_width}, height: 620}})
             .then(function(dataUrl) {{
                 var a = document.createElement('a');
                 a.href = dataUrl;
