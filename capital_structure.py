@@ -147,6 +147,12 @@ st.plotly_chart(fig, use_container_width=True, config=config)
 
 # Custom SVG export — Plotly's toolbar button always rasterises to PNG
 # regardless of the format setting, so we call Plotly.toImage directly.
+svg_width = st.select_slider(
+    "SVG export width (px)",
+    options=[400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
+    value=700,
+    help="Narrower widths fit alongside text on a slide; wider widths suit full-slide use."
+)
 fig_json = fig.to_json()
 svg_html = f"""
 <div style="margin: 6px 0 4px 0;">
@@ -161,7 +167,7 @@ svg_html = f"""
 (function() {{
     var figData = {fig_json};
     document.getElementById('btn-svg-cs').addEventListener('click', function() {{
-        Plotly.toImage(figData, {{format: 'svg', width: 1200, height: 700}})
+        Plotly.toImage(figData, {{format: 'svg', width: {svg_width}, height: {int(svg_width * 7/12)}}})
             .then(function(dataUrl) {{
                 var a = document.createElement('a');
                 a.href = dataUrl;
