@@ -91,10 +91,10 @@ fig.add_annotation(x=x_left, y=V_U,
                    text="", showarrow=True,
                    arrowhead=2, arrowsize=1.2, arrowwidth=1.5,
                    arrowcolor="#d62728")
-fig.add_annotation(x=x_left, y=V_U,
+fig.add_annotation(x=x_left, y=(V_U + PVTS_top) / 2,
                    text="PV (tax shield)",
                    showarrow=False, font=dict(size=12, color="#d62728"),
-                   xanchor="center", yanchor="top", yshift=-6)
+                   xanchor="right", yanchor="middle", xshift=-6)
 
 # V_L — double-headed arrow (two opposing arrows)
 fig.add_annotation(x=x_right, y=VL_top,
@@ -109,10 +109,10 @@ fig.add_annotation(x=x_right, y=V_U,
                    text="", showarrow=True,
                    arrowhead=2, arrowsize=1.2, arrowwidth=1.5,
                    arrowcolor="black")
-fig.add_annotation(x=x_right, y=V_U,
+fig.add_annotation(x=x_right, y=(V_U + VL_top) / 2,
                    text="Net gain from debt",
                    showarrow=False, font=dict(size=12, color="black"),
-                   xanchor="center", yanchor="top", yshift=-6)
+                   xanchor="left", yanchor="middle", xshift=6)
 
 # PV(distress costs) — double-headed arrow (two opposing arrows)
 fig.add_annotation(x=x_dist, y=VDist_top,
