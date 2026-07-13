@@ -66,7 +66,7 @@ fig.add_hline(y=V_U, line=dict(color=INDIGO, dash="dash"),
                               font=dict(size=12, color=INDIGO)))
 
 fig.add_shape(type="line", x0=opt_d_pct, x1=opt_d_pct,
-              y0=0, y1=1, yref="paper",
+              y0=0, y1=V_L[opt_idx], yref="y",
               line=dict(color="grey", dash="dash"))
 # Place "Optimal X% debt" label on the opposite side from "Value of levered firm"
 _opt_xanchor = "right" if abs(opt_d_pct - x_right) < 15 else "left"
