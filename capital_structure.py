@@ -141,9 +141,38 @@ fig.update_layout(xaxis_title="Debt as % of Assets",
                               xanchor="center"),
                   margin=dict(l=80, r=80, t=30, b=40))
 
-# 🚀  Show chart with SVG download built‑in (camera icon)
-config = {"toImageButtonOptions": {"format": "svg"}}
+# Camera button downloads PNG; separate button below handles true SVG export
+config = {"toImageButtonOptions": {"format": "png", "filename": "capital_structure", "width": 1200, "height": 700, "scale": 2}}
 st.plotly_chart(fig, use_container_width=True, config=config)
+
+# Custom SVG export — Plotly's toolbar button always rasterises to PNG
+# regardless of the format setting, so we call Plotly.toImage directly.
+fig_json = fig.to_json()
+svg_html = f"""
+<div style="margin: 6px 0 4px 0;">
+    <button id="btn-svg-cs" style="
+        background-color: #2563EB; color: white; border: none;
+        padding: 8px 18px; border-radius: 6px; cursor: pointer;
+        font-size: 13px; font-weight: 500;
+    ">⬇️ Download as SVG</button>
+</div>
+<script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+<script>
+(function() {{
+    var figData = {fig_json};
+    document.getElementById('btn-svg-cs').addEventListener('click', function() {{
+        Plotly.toImage(figData, {{format: 'svg', width: 1200, height: 700}})
+            .then(function(dataUrl) {{
+                var a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = 'capital_structure.svg';
+                a.click();
+            }});
+    }});
+}})();
+</script>
+"""
+st.components.v1.html(svg_html, height=60)
 
 st.markdown(
     f"**Optimal capital structure:** **{opt_d_pct}% debt**, "
