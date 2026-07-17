@@ -153,7 +153,7 @@ fig.update_layout(xaxis_title="Debt as % of Assets",
 
 # Camera button downloads PNG; separate button below handles true SVG export
 config = {"toImageButtonOptions": {"format": "png", "filename": "capital_structure", "width": 1200, "height": 700, "scale": 2}}
-st.plotly_chart(fig, use_container_width=True, config=config)
+st.plotly_chart(fig, width='stretch', config=config)
 
 # Custom SVG export — Plotly's toolbar button always rasterises to PNG
 # regardless of the format setting, so we call Plotly.toImage directly.
@@ -204,7 +204,7 @@ with st.expander("Data table"):
         "V Levered": V_L,
     })
     st.dataframe(df.style.format("{:.2f}"),
-                 use_container_width=True, height=280)
+                 width='stretch', height=280)
 
 st.markdown(
     '<div style="text-align:center; padding-top:1rem; color:#6B7280;">'
@@ -212,3 +212,5 @@ st.markdown(
     '</div>',
     unsafe_allow_html=True,
 )
+
+# end of file
